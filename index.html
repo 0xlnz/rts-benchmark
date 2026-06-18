@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RTS Benchmark</title>
+<style>
+  :root{
+    --bg:#0d0f12; --fg:#e8e6df; --dim:#8b8f96; --line:#23262c;
+    --card:#14171b; --accent:#d4a73c;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:var(--bg);color:var(--fg);
+    font:16px/1.6 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:680px;margin:0 auto;padding:14vh 24px 18vh}
+  .kicker{font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent)}
+  h1{font-size:clamp(34px,7vw,52px);font-weight:600;letter-spacing:-.02em;margin:14px 0 18px}
+  .lede{color:var(--dim);font-size:17px;max-width:52ch}
+  .prompt{
+    margin:34px 0 56px;padding:18px 20px;border-left:2px solid var(--line);
+    color:var(--dim);font-size:14.5px;font-style:italic;
+  }
+  .label{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin-bottom:18px}
+  a.card{
+    display:block;text-decoration:none;color:inherit;
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:22px 24px;margin-bottom:14px;
+    transition:border-color .15s ease,transform .15s ease;
+  }
+  a.card:hover{border-color:#3a3f48;transform:translateY(-2px)}
+  .card .row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .card .name{font-size:21px;font-weight:600;letter-spacing:-.01em}
+  .card .model{font-size:12px;color:var(--accent);letter-spacing:.04em;white-space:nowrap}
+  .card .meta{color:var(--dim);font-size:14px;margin-top:6px}
+  .card .arrow{color:var(--dim);transition:transform .15s ease,color .15s ease}
+  a.card:hover .arrow{color:var(--accent);transform:translateX(3px)}
+  footer{margin-top:64px;color:var(--dim);font-size:13px}
+  footer a{color:var(--dim)}
+  footer a:hover{color:var(--fg)}
+</style>
+</head>
+<body>
+  <main class="wrap">
+    <p class="kicker">RTS Benchmark</p>
+    <h1>One prompt, one file, every new model.</h1>
+    <p class="lede">Each new model gets the same prompt — verbatim, one attempt — to build a real-time strategy game in a single HTML file. No edits, no follow-ups. What it produces is what you play.</p>
+
+    <p class="prompt">“Create a simple but functional real time strategy game similar to old WarCraft, StarCraft or Command &amp; Conquer. Build buildings, create units, gather resources, uncover the map. No AI, no multiplayer, no sound. Everything in a single HTML/CSS/JS file.”</p>
+
+    <p class="label">Entries</p>
+
+    <a class="card" href="rts-fable/fable.html">
+      <div class="row">
+        <span class="name">IRONHOLD <span class="arrow">→</span></span>
+        <span class="model">Claude Fable 5</span>
+      </div>
+      <div class="meta">Retro CRT / pixel aesthetic · drag-select, right-click to move, WASD to pan</div>
+    </a>
+
+    <a class="card" href="rts-fable/opus48.html">
+      <div class="row">
+        <span class="name">Regno di Eldoria <span class="arrow">→</span></span>
+        <span class="model">Claude Opus 4.8</span>
+      </div>
+      <div class="meta">Polished fantasy UI · zoomable map, roaming enemies · controls in-game</div>
+    </a>
+
+    <footer>
+      Source &amp; prompt on <a href="https://github.com/0xlnz/rts-benchmark">GitHub</a>
+    </footer>
+  </main>
+</body>
+</html>
