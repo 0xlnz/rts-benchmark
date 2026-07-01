@@ -1,0 +1,1595 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Outpost RTS</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --panel: rgba(16, 22, 25, .9);
+      --panel-strong: rgba(12, 17, 20, .96);
+      --line: rgba(178, 205, 198, .22);
+      --text: #e7f1ec;
+      --muted: #9eb2ab;
+      --good: #77e2a4;
+      --warn: #f2c05d;
+      --bad: #ef786d;
+      --accent: #58c8dd;
+      --earth: #8d6b43;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #050809;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      user-select: none;
+    }
+
+    #game {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      background: #0b1513;
+      cursor: crosshair;
+    }
+
+    .hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .topbar {
+      position: absolute;
+      left: 14px;
+      top: 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      height: 34px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel-strong);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+    }
+
+    .resource {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 86px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .gem {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      background: linear-gradient(135deg, #e7fbff, #5bd0df 45%, #277a85);
+      box-shadow: 0 0 12px rgba(92, 216, 229, .48);
+      transform: rotate(45deg);
+    }
+
+    .supplyIcon {
+      width: 15px;
+      height: 15px;
+      border-radius: 2px;
+      border: 2px solid #b8c6ad;
+      background: linear-gradient(135deg, #404b3c, #95b17c);
+    }
+
+    .side {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      width: 256px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .panel {
+      pointer-events: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .36);
+      backdrop-filter: blur(6px);
+    }
+
+    .minimap {
+      width: 100%;
+      aspect-ratio: 1;
+      padding: 8px;
+    }
+
+    #minimapCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: 5px;
+      background: #050809;
+      border: 1px solid rgba(255, 255, 255, .12);
+      cursor: pointer;
+    }
+
+    .commands {
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .panelTitle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 24px;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .selectionName {
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 148px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    button.cmd {
+      appearance: none;
+      min-height: 58px;
+      padding: 7px 6px;
+      border: 1px solid rgba(224, 238, 232, .2);
+      border-radius: 6px;
+      color: var(--text);
+      background: linear-gradient(180deg, rgba(52, 68, 62, .92), rgba(28, 37, 35, .96));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 4px 12px rgba(0, 0, 0, .25);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: 0;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+    button.cmd:hover:not(:disabled) {
+      border-color: rgba(120, 225, 235, .62);
+      background: linear-gradient(180deg, rgba(62, 86, 79, .98), rgba(30, 45, 43, .98));
+    }
+
+    button.cmd:active:not(:disabled) { transform: translateY(1px); }
+
+    button.cmd:disabled {
+      color: rgba(231, 241, 236, .36);
+      border-color: rgba(224, 238, 232, .08);
+      background: rgba(25, 31, 30, .8);
+      cursor: default;
+      box-shadow: none;
+    }
+
+    .cost {
+      display: block;
+      margin-top: 5px;
+      color: #bdeef4;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .queue {
+      height: 8px;
+      overflow: hidden;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, .1);
+    }
+
+    .queue span {
+      display: block;
+      width: 0;
+      height: 100%;
+      background: linear-gradient(90deg, #60d78f, #5bd3e2);
+    }
+
+    .bottom {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      width: min(560px, calc(100vw - 300px));
+      min-height: 74px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .34);
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+    }
+
+    .statusLine {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .statusLine strong { color: var(--text); }
+
+    .chips {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .08);
+      color: #d5e2dd;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .toast {
+      position: absolute;
+      top: 58px;
+      left: 14px;
+      min-width: 240px;
+      max-width: 380px;
+      padding: 9px 11px;
+      border-radius: 6px;
+      border: 1px solid rgba(242, 192, 93, .36);
+      background: rgba(30, 23, 13, .92);
+      color: #ffe7b0;
+      font-size: 13px;
+      font-weight: 700;
+      opacity: 0;
+      transform: translateY(-6px);
+      transition: opacity .18s ease, transform .18s ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 780px) {
+      .side {
+        width: 202px;
+      }
+
+      .bottom {
+        width: calc(100vw - 230px);
+      }
+
+      button.cmd {
+        min-height: 54px;
+        padding-inline: 4px;
+        font-size: 10px;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .side {
+        right: 8px;
+        bottom: 8px;
+        width: 164px;
+      }
+
+      .bottom {
+        left: 8px;
+        bottom: 8px;
+        width: calc(100vw - 188px);
+        padding: 8px;
+      }
+
+      .topbar {
+        left: 8px;
+        top: 8px;
+      }
+
+      .resource {
+        min-width: 68px;
+        font-size: 12px;
+      }
+
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .statusLine {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div class="hud">
+    <div class="topbar">
+      <div class="resource"><span class="gem"></span><span id="credits">0</span></div>
+      <div class="resource"><span class="supplyIcon"></span><span id="supply">0/0</span></div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="side">
+      <div class="panel minimap">
+        <canvas id="minimapCanvas" width="240" height="240"></canvas>
+      </div>
+      <div class="panel commands">
+        <div class="panelTitle">
+          <span>Command</span>
+          <span id="selectionName" class="selectionName">None</span>
+        </div>
+        <div class="grid" id="commandGrid"></div>
+        <div class="queue"><span id="queueBar"></span></div>
+      </div>
+    </div>
+
+    <div class="bottom">
+      <div class="statusLine">
+        <span><strong id="statusMain">Outpost ready</strong></span>
+        <span id="statusSub">0% explored</span>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const minimap = document.getElementById("minimapCanvas");
+      const mctx = minimap.getContext("2d");
+      const ui = {
+        credits: document.getElementById("credits"),
+        supply: document.getElementById("supply"),
+        commandGrid: document.getElementById("commandGrid"),
+        selectionName: document.getElementById("selectionName"),
+        queueBar: document.getElementById("queueBar"),
+        statusMain: document.getElementById("statusMain"),
+        statusSub: document.getElementById("statusSub"),
+        chips: document.getElementById("chips"),
+        toast: document.getElementById("toast")
+      };
+
+      const TILE = 32;
+      const MAP_W = 96;
+      const MAP_H = 96;
+      const WORLD_W = MAP_W * TILE;
+      const WORLD_H = MAP_H * TILE;
+      const BUILD_MARGIN = 6;
+      const ENTITY_SELECT_RADIUS = 18;
+
+      const UNIT_TYPES = {
+        worker: {
+          name: "Worker",
+          hp: 45,
+          speed: 92,
+          radius: 10,
+          sight: 7,
+          supply: 1,
+          cost: 55,
+          buildTime: 6,
+          color: "#f0bc57"
+        },
+        soldier: {
+          name: "Ranger",
+          hp: 80,
+          speed: 74,
+          radius: 11,
+          sight: 8,
+          supply: 1,
+          cost: 85,
+          buildTime: 8,
+          color: "#8ae29e"
+        }
+      };
+
+      const BUILDING_TYPES = {
+        command: {
+          name: "Command Center",
+          w: 4,
+          h: 4,
+          hp: 900,
+          sight: 10,
+          supply: 8,
+          cost: 0,
+          buildTime: 0,
+          trains: ["worker"]
+        },
+        barracks: {
+          name: "Barracks",
+          w: 3,
+          h: 3,
+          hp: 520,
+          sight: 8,
+          supply: 0,
+          cost: 160,
+          buildTime: 14,
+          trains: ["soldier"]
+        },
+        depot: {
+          name: "Supply Depot",
+          w: 2,
+          h: 2,
+          hp: 360,
+          sight: 6,
+          supply: 6,
+          cost: 90,
+          buildTime: 10,
+          trains: []
+        },
+        turret: {
+          name: "Watch Tower",
+          w: 2,
+          h: 2,
+          hp: 320,
+          sight: 13,
+          supply: 0,
+          cost: 120,
+          buildTime: 11,
+          trains: []
+        }
+      };
+
+      let seed = 99431;
+      const rand = () => {
+        seed = (seed * 1664525 + 1013904223) >>> 0;
+        return seed / 4294967296;
+      };
+
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+      const dist = (a, b, c, d) => Math.hypot(a - c, b - d);
+      const tileIndex = (tx, ty) => ty * MAP_W + tx;
+      const worldToTile = (v) => Math.floor(v / TILE);
+
+      const state = {
+        credits: 320,
+        camera: { x: 0, y: 0 },
+        mouse: { x: 0, y: 0, worldX: 0, worldY: 0, down: false, sx: 0, sy: 0 },
+        keys: new Set(),
+        selection: [],
+        selectedBuilding: null,
+        buildMode: null,
+        id: 1,
+        lastTime: performance.now(),
+        toastUntil: 0,
+        drag: null,
+        frame: 0
+      };
+
+      const terrain = new Uint8Array(MAP_W * MAP_H);
+      const shade = new Float32Array(MAP_W * MAP_H);
+      const visible = new Uint8Array(MAP_W * MAP_H);
+      const explored = new Uint8Array(MAP_W * MAP_H);
+      const resources = [];
+      const units = [];
+      const buildings = [];
+
+      function noise(tx, ty) {
+        const a = Math.sin(tx * 12.9898 + ty * 78.233) * 43758.5453;
+        return a - Math.floor(a);
+      }
+
+      function smooth(tx, ty) {
+        let sum = 0;
+        let count = 0;
+        for (let y = -2; y <= 2; y += 1) {
+          for (let x = -2; x <= 2; x += 1) {
+            const xx = clamp(tx + x, 0, MAP_W - 1);
+            const yy = clamp(ty + y, 0, MAP_H - 1);
+            sum += noise(xx, yy);
+            count += 1;
+          }
+        }
+        return sum / count;
+      }
+
+      function generateMap() {
+        for (let y = 0; y < MAP_H; y += 1) {
+          for (let x = 0; x < MAP_W; x += 1) {
+            const n = smooth(x, y);
+            const i = tileIndex(x, y);
+            shade[i] = noise(x + 61, y + 19) * .16 - .08;
+            terrain[i] = n < .315 ? 3 : n > .665 ? 1 : n > .575 ? 2 : 0;
+          }
+        }
+
+        clearArea(11, 12, 18, 16);
+        clearArea(33, 36, 12, 12);
+        clearArea(64, 20, 14, 12);
+        clearArea(70, 70, 12, 12);
+
+        addResourceCluster(20, 22, 9, "crystal");
+        addResourceCluster(39, 44, 8, "crystal");
+        addResourceCluster(72, 25, 10, "ore");
+        addResourceCluster(73, 76, 11, "crystal");
+        addResourceCluster(18, 72, 8, "ore");
+      }
+
+      function clearArea(tx, ty, w, h) {
+        for (let y = ty; y < ty + h; y += 1) {
+          for (let x = tx; x < tx + w; x += 1) {
+            if (x >= 0 && y >= 0 && x < MAP_W && y < MAP_H) terrain[tileIndex(x, y)] = 0;
+          }
+        }
+      }
+
+      function addResourceCluster(tx, ty, count, type) {
+        for (let i = 0; i < count; i += 1) {
+          const ax = clamp(tx + Math.floor(rand() * 8 - 4), 2, MAP_W - 3);
+          const ay = clamp(ty + Math.floor(rand() * 8 - 4), 2, MAP_H - 3);
+          terrain[tileIndex(ax, ay)] = 0;
+          resources.push({
+            id: state.id++,
+            type,
+            x: ax * TILE + TILE / 2,
+            y: ay * TILE + TILE / 2,
+            amount: 320 + Math.floor(rand() * 180),
+            max: 500
+          });
+        }
+      }
+
+      function addBuilding(type, tx, ty, complete = true) {
+        const def = BUILDING_TYPES[type];
+        const b = {
+          id: state.id++,
+          kind: "building",
+          type,
+          x: tx * TILE,
+          y: ty * TILE,
+          tx,
+          ty,
+          w: def.w,
+          h: def.h,
+          hp: def.hp,
+          maxHp: def.hp,
+          complete,
+          progress: complete ? 1 : 0,
+          buildTime: def.buildTime,
+          queue: [],
+          currentTrain: null,
+          trainProgress: 0,
+          rallyX: (tx + def.w + 1) * TILE,
+          rallyY: (ty + Math.floor(def.h / 2)) * TILE
+        };
+        buildings.push(b);
+        return b;
+      }
+
+      function addUnit(type, x, y) {
+        const def = UNIT_TYPES[type];
+        const u = {
+          id: state.id++,
+          kind: "unit",
+          type,
+          x,
+          y,
+          targetX: x,
+          targetY: y,
+          hp: def.hp,
+          maxHp: def.hp,
+          selected: false,
+          command: "idle",
+          resourceId: null,
+          carrying: 0,
+          harvestTimer: 0,
+          wander: rand() * Math.PI * 2
+        };
+        units.push(u);
+        return u;
+      }
+
+      function init() {
+        generateMap();
+        addBuilding("command", 13, 14, true);
+        addBuilding("depot", 18, 15, true);
+        addUnit("worker", 19 * TILE, 18 * TILE);
+        addUnit("worker", 20 * TILE, 18 * TILE + 18);
+        addUnit("worker", 19 * TILE + 22, 19 * TILE);
+        addUnit("soldier", 16 * TILE, 20 * TILE);
+        state.camera.x = 12 * TILE - 80;
+        state.camera.y = 12 * TILE - 60;
+        resize();
+        updateVisibility();
+        drawMinimap();
+        updateUI();
+        requestAnimationFrame(loop);
+      }
+
+      function resize() {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.floor(window.innerWidth * dpr);
+        canvas.height = Math.floor(window.innerHeight * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        state.camera.x = clamp(state.camera.x, 0, WORLD_W - window.innerWidth);
+        state.camera.y = clamp(state.camera.y, 0, WORLD_H - window.innerHeight);
+      }
+
+      function screenToWorld(x, y) {
+        return { x: x + state.camera.x, y: y + state.camera.y };
+      }
+
+      function getEntityAt(wx, wy) {
+        for (let i = units.length - 1; i >= 0; i -= 1) {
+          const u = units[i];
+          if (!isVisibleAt(u.x, u.y)) continue;
+          if (dist(wx, wy, u.x, u.y) <= ENTITY_SELECT_RADIUS) return u;
+        }
+        for (let i = buildings.length - 1; i >= 0; i -= 1) {
+          const b = buildings[i];
+          if (!isVisibleAt(b.x + b.w * TILE / 2, b.y + b.h * TILE / 2)) continue;
+          if (wx >= b.x && wy >= b.y && wx <= b.x + b.w * TILE && wy <= b.y + b.h * TILE) return b;
+        }
+        return null;
+      }
+
+      function getResourceAt(wx, wy) {
+        for (const r of resources) {
+          if (r.amount <= 0) continue;
+          if (!isVisibleAt(r.x, r.y)) continue;
+          if (dist(wx, wy, r.x, r.y) <= 22) return r;
+        }
+        return null;
+      }
+
+      function isVisibleAt(wx, wy) {
+        const tx = clamp(worldToTile(wx), 0, MAP_W - 1);
+        const ty = clamp(worldToTile(wy), 0, MAP_H - 1);
+        return visible[tileIndex(tx, ty)] === 1;
+      }
+
+      function selectOnly(entity) {
+        clearSelection();
+        if (!entity) return;
+        if (entity.kind === "unit") {
+          entity.selected = true;
+          state.selection = [entity];
+          state.selectedBuilding = null;
+        } else {
+          state.selectedBuilding = entity;
+        }
+        state.buildMode = null;
+        updateUI();
+      }
+
+      function clearSelection() {
+        for (const u of units) u.selected = false;
+        state.selection = [];
+        state.selectedBuilding = null;
+      }
+
+      function selectionHas(type) {
+        return state.selection.some((u) => u.type === type);
+      }
+
+      function commandMove(wx, wy) {
+        if (!state.selection.length) return;
+        const count = state.selection.length;
+        const spread = count > 1 ? 22 : 0;
+        state.selection.forEach((u, i) => {
+          const angle = (i / Math.max(1, count)) * Math.PI * 2;
+          const ring = Math.ceil((i + 1) / 6);
+          u.targetX = clamp(wx + Math.cos(angle) * spread * ring, 8, WORLD_W - 8);
+          u.targetY = clamp(wy + Math.sin(angle) * spread * ring, 8, WORLD_H - 8);
+          u.command = "move";
+          u.resourceId = null;
+          u.harvestTimer = 0;
+        });
+        updateUI();
+      }
+
+      function commandHarvest(resource) {
+        const workers = state.selection.filter((u) => u.type === "worker");
+        if (!workers.length) return;
+        workers.forEach((u, i) => {
+          u.command = "toResource";
+          u.resourceId = resource.id;
+          u.targetX = resource.x + Math.cos(i * 2.1) * 18;
+          u.targetY = resource.y + Math.sin(i * 2.1) * 18;
+          u.harvestTimer = 0;
+        });
+        updateUI();
+      }
+
+      function findNearestDropoff(unit) {
+        let best = null;
+        let bestD = Infinity;
+        for (const b of buildings) {
+          if (b.type !== "command" || !b.complete) continue;
+          const cx = b.x + b.w * TILE / 2;
+          const cy = b.y + b.h * TILE / 2;
+          const d = dist(unit.x, unit.y, cx, cy);
+          if (d < bestD) {
+            bestD = d;
+            best = b;
+          }
+        }
+        return best;
+      }
+
+      function beginBuild(type) {
+        if (!selectionHas("worker")) {
+          flash("Select a worker first.");
+          return;
+        }
+        const def = BUILDING_TYPES[type];
+        if (state.credits < def.cost) {
+          flash("Not enough credits.");
+          return;
+        }
+        state.buildMode = type;
+        flash(def.name + " placement armed.");
+        updateUI();
+      }
+
+      function canPlace(type, tx, ty) {
+        const def = BUILDING_TYPES[type];
+        if (tx < 0 || ty < 0 || tx + def.w >= MAP_W || ty + def.h >= MAP_H) return false;
+        for (let y = ty; y < ty + def.h; y += 1) {
+          for (let x = tx; x < tx + def.w; x += 1) {
+            if (terrain[tileIndex(x, y)] === 3) return false;
+          }
+        }
+        for (const b of buildings) {
+          const a = { x1: tx - 1, y1: ty - 1, x2: tx + def.w + 1, y2: ty + def.h + 1 };
+          const bb = { x1: b.tx, y1: b.ty, x2: b.tx + b.w, y2: b.ty + b.h };
+          if (a.x1 < bb.x2 && a.x2 > bb.x1 && a.y1 < bb.y2 && a.y2 > bb.y1) return false;
+        }
+        for (const r of resources) {
+          if (r.amount <= 0) continue;
+          const rx = worldToTile(r.x);
+          const ry = worldToTile(r.y);
+          if (rx >= tx - 1 && ry >= ty - 1 && rx < tx + def.w + 1 && ry < ty + def.h + 1) return false;
+        }
+        return true;
+      }
+
+      function placeBuilding(type, tx, ty) {
+        const def = BUILDING_TYPES[type];
+        if (!canPlace(type, tx, ty)) {
+          flash("Placement blocked.");
+          return;
+        }
+        if (state.credits < def.cost) {
+          flash("Not enough credits.");
+          return;
+        }
+        state.credits -= def.cost;
+        const b = addBuilding(type, tx, ty, false);
+        const worker = state.selection.find((u) => u.type === "worker");
+        if (worker) {
+          worker.targetX = b.x + b.w * TILE / 2;
+          worker.targetY = b.y + b.h * TILE + 20;
+          worker.command = "move";
+        }
+        state.buildMode = null;
+        selectOnly(b);
+        updateUI();
+      }
+
+      function trainUnit(type) {
+        const b = state.selectedBuilding;
+        if (!b || !b.complete) return;
+        const def = UNIT_TYPES[type];
+        if (state.credits < def.cost) {
+          flash("Not enough credits.");
+          return;
+        }
+        const supply = getSupply();
+        if (supply.used + def.supply > supply.cap) {
+          flash("More supply needed.");
+          return;
+        }
+        state.credits -= def.cost;
+        b.queue.push(type);
+        if (!b.currentTrain) startNextTrain(b);
+        updateUI();
+      }
+
+      function startNextTrain(b) {
+        if (!b.queue.length) {
+          b.currentTrain = null;
+          b.trainProgress = 0;
+          return;
+        }
+        b.currentTrain = b.queue.shift();
+        b.trainProgress = 0;
+      }
+
+      function finishTrain(b) {
+        const type = b.currentTrain;
+        const x = clamp(b.rallyX, 0, WORLD_W);
+        const y = clamp(b.rallyY, 0, WORLD_H);
+        const u = addUnit(type, x, y);
+        u.targetX = x + 20 + rand() * 18;
+        u.targetY = y + rand() * 28 - 14;
+        startNextTrain(b);
+      }
+
+      function getSupply() {
+        let used = 0;
+        let cap = 0;
+        for (const u of units) used += UNIT_TYPES[u.type].supply;
+        for (const b of buildings) {
+          if (b.currentTrain) used += UNIT_TYPES[b.currentTrain].supply;
+          for (const queued of b.queue) used += UNIT_TYPES[queued].supply;
+        }
+        for (const b of buildings) {
+          if (b.complete) cap += BUILDING_TYPES[b.type].supply;
+        }
+        return { used, cap };
+      }
+
+      function updateUnits(dt) {
+        for (const u of units) {
+          const def = UNIT_TYPES[u.type];
+          if (u.command === "toResource") {
+            const r = resources.find((item) => item.id === u.resourceId && item.amount > 0);
+            if (!r) {
+              u.command = "idle";
+              u.resourceId = null;
+            } else if (dist(u.x, u.y, r.x, r.y) <= 25) {
+              u.command = "harvest";
+              u.harvestTimer = 0;
+            }
+          }
+
+          if (u.command === "harvest") {
+            const r = resources.find((item) => item.id === u.resourceId && item.amount > 0);
+            if (!r) {
+              u.command = "idle";
+              u.resourceId = null;
+            } else {
+              u.harvestTimer += dt;
+              u.wander += dt * 4;
+              if (u.harvestTimer >= 1.1) {
+                const take = Math.min(10, r.amount);
+                r.amount -= take;
+                u.carrying += take;
+                u.harvestTimer = 0;
+                const drop = findNearestDropoff(u);
+                if (drop && (u.carrying >= 30 || r.amount <= 0)) {
+                  u.command = "return";
+                  u.targetX = drop.x + drop.w * TILE / 2;
+                  u.targetY = drop.y + drop.h * TILE / 2;
+                }
+              }
+            }
+          }
+
+          if (u.command === "return") {
+            const drop = findNearestDropoff(u);
+            if (drop) {
+              u.targetX = drop.x + drop.w * TILE / 2;
+              u.targetY = drop.y + drop.h * TILE / 2;
+              if (dist(u.x, u.y, u.targetX, u.targetY) < 38) {
+                state.credits += u.carrying;
+                u.carrying = 0;
+                const r = resources.find((item) => item.id === u.resourceId && item.amount > 0);
+                if (r) {
+                  u.command = "toResource";
+                  u.targetX = r.x;
+                  u.targetY = r.y;
+                } else {
+                  u.command = "idle";
+                }
+              }
+            } else {
+              u.command = "idle";
+            }
+          }
+
+          if (u.command !== "harvest" && (Math.abs(u.targetX - u.x) > .4 || Math.abs(u.targetY - u.y) > .4)) {
+            const dx = u.targetX - u.x;
+            const dy = u.targetY - u.y;
+            const len = Math.hypot(dx, dy) || 1;
+            const step = Math.min(len, def.speed * dt);
+            u.x += dx / len * step;
+            u.y += dy / len * step;
+            u.x = clamp(u.x, 0, WORLD_W);
+            u.y = clamp(u.y, 0, WORLD_H);
+            const tx = clamp(worldToTile(u.x), 0, MAP_W - 1);
+            const ty = clamp(worldToTile(u.y), 0, MAP_H - 1);
+            if (terrain[tileIndex(tx, ty)] === 3) {
+              u.x -= dx / len * step;
+              u.y -= dy / len * step;
+              u.targetX += (rand() - .5) * 90;
+              u.targetY += (rand() - .5) * 90;
+            }
+            if (step >= len - .4 && u.command === "move") u.command = "idle";
+          }
+        }
+      }
+
+      function updateBuildings(dt) {
+        for (const b of buildings) {
+          if (!b.complete) {
+            b.progress += dt / Math.max(.1, b.buildTime);
+            if (b.progress >= 1) {
+              b.progress = 1;
+              b.complete = true;
+              flash(BUILDING_TYPES[b.type].name + " online.");
+            }
+          }
+          if (b.complete && b.currentTrain) {
+            b.trainProgress += dt / UNIT_TYPES[b.currentTrain].buildTime;
+            if (b.trainProgress >= 1) finishTrain(b);
+          }
+        }
+      }
+
+      function updateCamera(dt) {
+        let vx = 0;
+        let vy = 0;
+        const edge = 18;
+        if (state.keys.has("ArrowLeft") || state.keys.has("a") || state.mouse.x < edge) vx -= 1;
+        if (state.keys.has("ArrowRight") || state.keys.has("d") || state.mouse.x > window.innerWidth - edge) vx += 1;
+        if (state.keys.has("ArrowUp") || state.keys.has("w") || state.mouse.y < edge) vy -= 1;
+        if (state.keys.has("ArrowDown") || state.keys.has("s") || state.mouse.y > window.innerHeight - edge) vy += 1;
+        const len = Math.hypot(vx, vy) || 1;
+        state.camera.x = clamp(state.camera.x + vx / len * 520 * dt, 0, Math.max(0, WORLD_W - window.innerWidth));
+        state.camera.y = clamp(state.camera.y + vy / len * 520 * dt, 0, Math.max(0, WORLD_H - window.innerHeight));
+      }
+
+      function updateVisibility() {
+        visible.fill(0);
+        for (const u of units) reveal(u.x, u.y, UNIT_TYPES[u.type].sight);
+        for (const b of buildings) {
+          if (b.complete) reveal(b.x + b.w * TILE / 2, b.y + b.h * TILE / 2, BUILDING_TYPES[b.type].sight);
+        }
+      }
+
+      function reveal(wx, wy, radius) {
+        const cx = worldToTile(wx);
+        const cy = worldToTile(wy);
+        const r2 = radius * radius;
+        for (let y = cy - radius; y <= cy + radius; y += 1) {
+          if (y < 0 || y >= MAP_H) continue;
+          for (let x = cx - radius; x <= cx + radius; x += 1) {
+            if (x < 0 || x >= MAP_W) continue;
+            const dx = x - cx;
+            const dy = y - cy;
+            if (dx * dx + dy * dy <= r2) {
+              const i = tileIndex(x, y);
+              visible[i] = 1;
+              explored[i] = 1;
+            }
+          }
+        }
+      }
+
+      function terrainColor(t, s) {
+        if (t === 3) return shadeColor("#1e5354", s - .04);
+        if (t === 2) return shadeColor("#675c43", s);
+        if (t === 1) return shadeColor("#435d38", s);
+        return shadeColor("#537147", s);
+      }
+
+      function shadeColor(hex, amt) {
+        const n = parseInt(hex.slice(1), 16);
+        let r = (n >> 16) & 255;
+        let g = (n >> 8) & 255;
+        let b = n & 255;
+        r = clamp(Math.round(r + amt * 255), 0, 255);
+        g = clamp(Math.round(g + amt * 255), 0, 255);
+        b = clamp(Math.round(b + amt * 255), 0, 255);
+        return `rgb(${r},${g},${b})`;
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        drawTerrain();
+        drawResources();
+        drawBuildings();
+        drawUnits();
+        drawBuildPreview();
+        drawSelectionBox();
+        drawFog();
+      }
+
+      function drawTerrain() {
+        const startX = clamp(Math.floor(state.camera.x / TILE) - 1, 0, MAP_W - 1);
+        const startY = clamp(Math.floor(state.camera.y / TILE) - 1, 0, MAP_H - 1);
+        const endX = clamp(Math.ceil((state.camera.x + window.innerWidth) / TILE) + 1, 0, MAP_W - 1);
+        const endY = clamp(Math.ceil((state.camera.y + window.innerHeight) / TILE) + 1, 0, MAP_H - 1);
+        for (let y = startY; y <= endY; y += 1) {
+          for (let x = startX; x <= endX; x += 1) {
+            const i = tileIndex(x, y);
+            const sx = x * TILE - state.camera.x;
+            const sy = y * TILE - state.camera.y;
+            ctx.fillStyle = terrainColor(terrain[i], shade[i]);
+            ctx.fillRect(sx, sy, TILE, TILE);
+            if (terrain[i] === 1) {
+              ctx.fillStyle = "rgba(24, 40, 23, .28)";
+              ctx.fillRect(sx + 5 + (i % 7), sy + 6, 4, 18);
+              ctx.fillRect(sx + 17, sy + 11 + (i % 5), 3, 12);
+            } else if (terrain[i] === 2) {
+              ctx.fillStyle = "rgba(33, 31, 25, .28)";
+              ctx.beginPath();
+              ctx.ellipse(sx + 17, sy + 17, 9, 6, .2, 0, Math.PI * 2);
+              ctx.fill();
+            } else if (terrain[i] === 3) {
+              ctx.fillStyle = "rgba(161, 226, 221, .14)";
+              ctx.fillRect(sx, sy + 5 + (i % 12), TILE, 2);
+            }
+          }
+        }
+
+        ctx.strokeStyle = "rgba(7, 13, 12, .12)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let x = startX; x <= endX; x += 1) {
+          const sx = x * TILE - state.camera.x;
+          ctx.moveTo(sx, startY * TILE - state.camera.y);
+          ctx.lineTo(sx, (endY + 1) * TILE - state.camera.y);
+        }
+        for (let y = startY; y <= endY; y += 1) {
+          const sy = y * TILE - state.camera.y;
+          ctx.moveTo(startX * TILE - state.camera.x, sy);
+          ctx.lineTo((endX + 1) * TILE - state.camera.x, sy);
+        }
+        ctx.stroke();
+      }
+
+      function drawResources() {
+        for (const r of resources) {
+          if (r.amount <= 0 || !explored[tileIndex(worldToTile(r.x), worldToTile(r.y))]) continue;
+          const sx = r.x - state.camera.x;
+          const sy = r.y - state.camera.y;
+          if (sx < -40 || sy < -40 || sx > window.innerWidth + 40 || sy > window.innerHeight + 40) continue;
+          const isCrystal = r.type === "crystal";
+          const alpha = isVisibleAt(r.x, r.y) ? 1 : .38;
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.translate(sx, sy);
+          if (isCrystal) {
+            for (let i = 0; i < 4; i += 1) {
+              ctx.rotate(Math.PI / 8);
+              ctx.fillStyle = i % 2 ? "#4fbfd0" : "#c4f7fb";
+              ctx.beginPath();
+              ctx.moveTo(0, -18 + i * 3);
+              ctx.lineTo(8 + i, 4);
+              ctx.lineTo(0, 14);
+              ctx.lineTo(-8 - i, 4);
+              ctx.closePath();
+              ctx.fill();
+            }
+          } else {
+            ctx.fillStyle = "#caa15b";
+            ctx.beginPath();
+            ctx.ellipse(0, 5, 18, 11, -.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#f0d48a";
+            ctx.beginPath();
+            ctx.ellipse(-5, -1, 9, 5, -.3, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+
+      function drawBuildings() {
+        const sorted = buildings.slice().sort((a, b) => a.y - b.y);
+        for (const b of sorted) {
+          const centerX = b.x + b.w * TILE / 2;
+          const centerY = b.y + b.h * TILE / 2;
+          if (!explored[tileIndex(worldToTile(centerX), worldToTile(centerY))]) continue;
+          const sx = b.x - state.camera.x;
+          const sy = b.y - state.camera.y;
+          if (sx < -160 || sy < -160 || sx > window.innerWidth + 160 || sy > window.innerHeight + 160) continue;
+          const live = isVisibleAt(centerX, centerY);
+          ctx.save();
+          ctx.globalAlpha = live ? 1 : .44;
+          drawBuildingShape(b, sx, sy);
+          if (b === state.selectedBuilding) drawBuildingSelection(b, sx, sy);
+          if (!b.complete) {
+            ctx.fillStyle = "rgba(0,0,0,.54)";
+            ctx.fillRect(sx + 8, sy + b.h * TILE - 14, b.w * TILE - 16, 7);
+            ctx.fillStyle = "#6ee0a0";
+            ctx.fillRect(sx + 8, sy + b.h * TILE - 14, (b.w * TILE - 16) * b.progress, 7);
+          }
+          ctx.restore();
+        }
+      }
+
+      function drawBuildingShape(b, sx, sy) {
+        const w = b.w * TILE;
+        const h = b.h * TILE;
+        ctx.fillStyle = "rgba(0, 0, 0, .28)";
+        ctx.beginPath();
+        ctx.ellipse(sx + w / 2, sy + h - 4, w * .52, h * .16, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (b.type === "command") {
+          const grad = ctx.createLinearGradient(sx, sy, sx, sy + h);
+          grad.addColorStop(0, b.complete ? "#aab8ad" : "#68736d");
+          grad.addColorStop(.5, "#4d5b58");
+          grad.addColorStop(1, "#283532");
+          roundedRect(sx + 8, sy + 18, w - 16, h - 26, 7, grad);
+          ctx.fillStyle = "#324441";
+          ctx.fillRect(sx + 28, sy + 5, w - 56, 28);
+          ctx.fillStyle = "#67d3e3";
+          ctx.fillRect(sx + 38, sy + 28, 34, 12);
+          ctx.fillRect(sx + w - 72, sy + 28, 34, 12);
+          ctx.fillStyle = "#1b2726";
+          ctx.fillRect(sx + w / 2 - 12, sy + h - 34, 24, 28);
+          ctx.strokeStyle = "rgba(255,255,255,.18)";
+          ctx.strokeRect(sx + 12, sy + 22, w - 24, h - 34);
+        } else if (b.type === "barracks") {
+          roundedRect(sx + 6, sy + 16, w - 12, h - 20, 6, "#33413d");
+          ctx.fillStyle = "#8e4540";
+          ctx.beginPath();
+          ctx.moveTo(sx + 4, sy + 26);
+          ctx.lineTo(sx + w / 2, sy + 2);
+          ctx.lineTo(sx + w - 4, sy + 26);
+          ctx.lineTo(sx + w - 14, sy + 36);
+          ctx.lineTo(sx + 14, sy + 36);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = "#1a2422";
+          ctx.fillRect(sx + w / 2 - 14, sy + h - 34, 28, 30);
+          ctx.fillStyle = "#a8bbb4";
+          ctx.fillRect(sx + 18, sy + 46, 18, 13);
+          ctx.fillRect(sx + w - 36, sy + 46, 18, 13);
+        } else if (b.type === "depot") {
+          roundedRect(sx + 5, sy + 9, w - 10, h - 12, 5, "#5a6549");
+          ctx.fillStyle = "#a9ba86";
+          ctx.fillRect(sx + 16, sy + 5, w - 32, 12);
+          ctx.fillStyle = "#2a332c";
+          ctx.fillRect(sx + 13, sy + 29, w - 26, 20);
+          ctx.strokeStyle = "rgba(255,255,255,.22)";
+          ctx.strokeRect(sx + 9, sy + 13, w - 18, h - 20);
+        } else if (b.type === "turret") {
+          roundedRect(sx + 9, sy + 20, w - 18, h - 22, 5, "#465652");
+          ctx.fillStyle = "#6f8279";
+          ctx.beginPath();
+          ctx.arc(sx + w / 2, sy + 24, 18, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#202b2a";
+          ctx.fillRect(sx + w / 2 - 4, sy + 1, 8, 32);
+          ctx.fillStyle = "#81d8dd";
+          ctx.fillRect(sx + w / 2 - 10, sy + 20, 20, 8);
+        }
+
+        if (!b.complete) {
+          ctx.fillStyle = "rgba(217, 187, 116, .22)";
+          for (let y = 0; y < b.h; y += 1) {
+            for (let x = 0; x < b.w; x += 1) {
+              ctx.strokeStyle = "rgba(255, 224, 150, .34)";
+              ctx.strokeRect(sx + x * TILE + BUILD_MARGIN, sy + y * TILE + BUILD_MARGIN, TILE - BUILD_MARGIN * 2, TILE - BUILD_MARGIN * 2);
+            }
+          }
+        }
+      }
+
+      function drawBuildingSelection(b, sx, sy) {
+        ctx.strokeStyle = "#79e4f0";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(sx + 2, sy + 2, b.w * TILE - 4, b.h * TILE - 4);
+      }
+
+      function roundedRect(x, y, w, h, r, fillStyle) {
+        ctx.fillStyle = fillStyle;
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawUnits() {
+        const sorted = units.slice().sort((a, b) => a.y - b.y);
+        for (const u of sorted) {
+          if (!explored[tileIndex(worldToTile(u.x), worldToTile(u.y))]) continue;
+          const sx = u.x - state.camera.x;
+          const sy = u.y - state.camera.y;
+          if (sx < -40 || sy < -40 || sx > window.innerWidth + 40 || sy > window.innerHeight + 40) continue;
+          const live = isVisibleAt(u.x, u.y);
+          ctx.save();
+          ctx.globalAlpha = live ? 1 : .45;
+          ctx.fillStyle = "rgba(0,0,0,.34)";
+          ctx.beginPath();
+          ctx.ellipse(sx, sy + 9, 14, 6, 0, 0, Math.PI * 2);
+          ctx.fill();
+          if (u.selected) {
+            ctx.strokeStyle = "#79e4f0";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(sx, sy + 8, 17, 9, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          if (u.type === "worker") drawWorker(u, sx, sy);
+          else drawSoldier(u, sx, sy);
+          if (u.carrying > 0) {
+            ctx.fillStyle = "#8eeaf2";
+            ctx.beginPath();
+            ctx.arc(sx + 12, sy - 10, 4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+
+      function drawWorker(u, sx, sy) {
+        const dx = u.targetX - u.x;
+        const dy = u.targetY - u.y;
+        const a = Math.atan2(dy, dx);
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(Number.isFinite(a) ? a : 0);
+        ctx.fillStyle = "#352a21";
+        ctx.fillRect(-10, -7, 20, 14);
+        ctx.fillStyle = UNIT_TYPES.worker.color;
+        ctx.fillRect(-6, -10, 14, 20);
+        ctx.fillStyle = "#dfe7d2";
+        ctx.fillRect(3, -6, 7, 12);
+        ctx.fillStyle = "#1f2525";
+        ctx.fillRect(-13, -9, 5, 18);
+        ctx.fillRect(8, -9, 5, 18);
+        ctx.restore();
+      }
+
+      function drawSoldier(u, sx, sy) {
+        const dx = u.targetX - u.x;
+        const dy = u.targetY - u.y;
+        const a = Math.atan2(dy, dx);
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(Number.isFinite(a) ? a : 0);
+        ctx.fillStyle = "#2a3030";
+        ctx.fillRect(-7, -8, 15, 16);
+        ctx.fillStyle = UNIT_TYPES.soldier.color;
+        ctx.fillRect(-5, -10, 10, 18);
+        ctx.fillStyle = "#1e2424";
+        ctx.fillRect(4, -3, 16, 5);
+        ctx.fillStyle = "#d5eadb";
+        ctx.fillRect(-3, -13, 6, 5);
+        ctx.restore();
+      }
+
+      function drawBuildPreview() {
+        if (!state.buildMode) return;
+        const def = BUILDING_TYPES[state.buildMode];
+        const tx = worldToTile(state.mouse.worldX);
+        const ty = worldToTile(state.mouse.worldY);
+        const ok = canPlace(state.buildMode, tx, ty);
+        const sx = tx * TILE - state.camera.x;
+        const sy = ty * TILE - state.camera.y;
+        ctx.fillStyle = ok ? "rgba(91, 211, 226, .22)" : "rgba(239, 120, 109, .24)";
+        ctx.fillRect(sx, sy, def.w * TILE, def.h * TILE);
+        ctx.strokeStyle = ok ? "#5bd3e2" : "#ef786d";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(sx + 1, sy + 1, def.w * TILE - 2, def.h * TILE - 2);
+      }
+
+      function drawSelectionBox() {
+        if (!state.drag) return;
+        const x = Math.min(state.drag.x1, state.drag.x2);
+        const y = Math.min(state.drag.y1, state.drag.y2);
+        const w = Math.abs(state.drag.x1 - state.drag.x2);
+        const h = Math.abs(state.drag.y1 - state.drag.y2);
+        if (w < 4 && h < 4) return;
+        ctx.fillStyle = "rgba(91, 211, 226, .14)";
+        ctx.strokeStyle = "#5bd3e2";
+        ctx.lineWidth = 1;
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeRect(x, y, w, h);
+      }
+
+      function drawFog() {
+        const startX = clamp(Math.floor(state.camera.x / TILE) - 1, 0, MAP_W - 1);
+        const startY = clamp(Math.floor(state.camera.y / TILE) - 1, 0, MAP_H - 1);
+        const endX = clamp(Math.ceil((state.camera.x + window.innerWidth) / TILE) + 1, 0, MAP_W - 1);
+        const endY = clamp(Math.ceil((state.camera.y + window.innerHeight) / TILE) + 1, 0, MAP_H - 1);
+        for (let y = startY; y <= endY; y += 1) {
+          for (let x = startX; x <= endX; x += 1) {
+            const i = tileIndex(x, y);
+            if (visible[i]) continue;
+            const sx = x * TILE - state.camera.x;
+            const sy = y * TILE - state.camera.y;
+            ctx.fillStyle = explored[i] ? "rgba(0, 0, 0, .44)" : "rgba(0, 0, 0, .91)";
+            ctx.fillRect(sx, sy, TILE + 1, TILE + 1);
+          }
+        }
+      }
+
+      function drawMinimap() {
+        const w = minimap.width;
+        const h = minimap.height;
+        const sx = w / MAP_W;
+        const sy = h / MAP_H;
+        mctx.fillStyle = "#020303";
+        mctx.fillRect(0, 0, w, h);
+        for (let y = 0; y < MAP_H; y += 1) {
+          for (let x = 0; x < MAP_W; x += 1) {
+            const i = tileIndex(x, y);
+            if (!explored[i]) continue;
+            const t = terrain[i];
+            mctx.fillStyle = visible[i]
+              ? (t === 3 ? "#24666a" : t === 2 ? "#6a6048" : t === 1 ? "#436c3d" : "#5c864c")
+              : "#24302c";
+            mctx.fillRect(x * sx, y * sy, Math.ceil(sx), Math.ceil(sy));
+          }
+        }
+        for (const r of resources) {
+          if (r.amount <= 0 || !explored[tileIndex(worldToTile(r.x), worldToTile(r.y))]) continue;
+          mctx.fillStyle = r.type === "crystal" ? "#66ddea" : "#e2bc68";
+          mctx.fillRect(r.x / WORLD_W * w - 1, r.y / WORLD_H * h - 1, 3, 3);
+        }
+        mctx.fillStyle = "#72e1a0";
+        for (const b of buildings) {
+          if (!b.complete) mctx.fillStyle = "#e2bc68";
+          else mctx.fillStyle = "#72e1a0";
+          mctx.fillRect(b.x / WORLD_W * w, b.y / WORLD_H * h, Math.max(2, b.w * sx), Math.max(2, b.h * sy));
+        }
+        mctx.fillStyle = "#ffffff";
+        for (const u of units) {
+          mctx.fillRect(u.x / WORLD_W * w - 1, u.y / WORLD_H * h - 1, 2, 2);
+        }
+        mctx.strokeStyle = "#f4ffff";
+        mctx.lineWidth = 1;
+        mctx.strokeRect(
+          state.camera.x / WORLD_W * w,
+          state.camera.y / WORLD_H * h,
+          window.innerWidth / WORLD_W * w,
+          window.innerHeight / WORLD_H * h
+        );
+      }
+
+      function updateUI() {
+        ui.credits.textContent = Math.floor(state.credits);
+        const supply = getSupply();
+        ui.supply.textContent = `${supply.used}/${supply.cap}`;
+        const exploredCount = explored.reduce((a, b) => a + b, 0);
+        ui.statusSub.textContent = `${Math.floor(exploredCount / explored.length * 100)}% explored`;
+
+        let name = "None";
+        let main = "Outpost ready";
+        if (state.selectedBuilding) {
+          const def = BUILDING_TYPES[state.selectedBuilding.type];
+          name = def.name;
+          main = state.selectedBuilding.complete ? def.name : `${def.name} ${Math.floor(state.selectedBuilding.progress * 100)}%`;
+        } else if (state.selection.length === 1) {
+          const u = state.selection[0];
+          name = UNIT_TYPES[u.type].name;
+          main = unitStatus(u);
+        } else if (state.selection.length > 1) {
+          name = `${state.selection.length} units`;
+          main = `${state.selection.length} units selected`;
+        }
+        if (state.buildMode) main = `${BUILDING_TYPES[state.buildMode].name} placement`;
+        ui.selectionName.textContent = name;
+        ui.statusMain.textContent = main;
+
+        ui.chips.innerHTML = "";
+        const counts = {};
+        for (const u of state.selection) counts[UNIT_TYPES[u.type].name] = (counts[UNIT_TYPES[u.type].name] || 0) + 1;
+        if (state.selectedBuilding) {
+          const b = state.selectedBuilding;
+          addChip(`${Math.round(b.hp)} / ${b.maxHp}`);
+          if (!b.complete) addChip(`${Math.floor(b.progress * 100)}%`);
+          if (b.currentTrain) addChip(`Training ${UNIT_TYPES[b.currentTrain].name}`);
+          if (b.queue.length) addChip(`Queue ${b.queue.length}`);
+        } else {
+          for (const label of Object.keys(counts)) addChip(`${counts[label]} ${label}`);
+          const carrying = state.selection.reduce((sum, u) => sum + u.carrying, 0);
+          if (carrying > 0) addChip(`Carrying ${carrying}`);
+        }
+
+        renderCommands();
+        let progress = 0;
+        if (state.selectedBuilding) {
+          const b = state.selectedBuilding;
+          progress = b.complete && b.currentTrain ? b.trainProgress : (!b.complete ? b.progress : 0);
+        }
+        ui.queueBar.style.width = `${Math.floor(progress * 100)}%`;
+      }
+
+      function addChip(text) {
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        chip.textContent = text;
+        ui.chips.appendChild(chip);
+      }
+
+      function unitStatus(u) {
+        if (u.command === "toResource") return "Moving to resource";
+        if (u.command === "harvest") return "Harvesting";
+        if (u.command === "return") return "Returning cargo";
+        if (u.command === "move") return "Moving";
+        return `${UNIT_TYPES[u.type].name} ready`;
+      }
+
+      function renderCommands() {
+        ui.commandGrid.innerHTML = "";
+        if (state.selectedBuilding) {
+          const b = state.selectedBuilding;
+          const def = BUILDING_TYPES[b.type];
+          if (!b.complete) {
+            addCommand("Building", "", true);
+            return;
+          }
+          for (const type of def.trains) {
+            addCommand(`Train ${UNIT_TYPES[type].name}`, UNIT_TYPES[type].cost, false, () => trainUnit(type));
+          }
+          if (!def.trains.length) addCommand("Hold", "", true);
+          return;
+        }
+        if (selectionHas("worker")) {
+          addCommand("Barracks", BUILDING_TYPES.barracks.cost, false, () => beginBuild("barracks"));
+          addCommand("Supply", BUILDING_TYPES.depot.cost, false, () => beginBuild("depot"));
+          addCommand("Tower", BUILDING_TYPES.turret.cost, false, () => beginBuild("turret"));
+          return;
+        }
+        addCommand("Select", "", true);
+      }
+
+      function addCommand(label, cost, disabled, onClick) {
+        const btn = document.createElement("button");
+        btn.className = "cmd";
+        btn.disabled = disabled || (Number(cost) > state.credits);
+        btn.innerHTML = `${label}${cost !== "" ? `<span class="cost">${cost}</span>` : ""}`;
+        if (onClick) btn.addEventListener("click", onClick);
+        ui.commandGrid.appendChild(btn);
+      }
+
+      function flash(message) {
+        ui.toast.textContent = message;
+        ui.toast.classList.add("show");
+        state.toastUntil = performance.now() + 1800;
+      }
+
+      function loop(now) {
+        const dt = Math.min(.05, (now - state.lastTime) / 1000);
+        state.lastTime = now;
+        state.frame += 1;
+        updateCamera(dt);
+        updateUnits(dt);
+        updateBuildings(dt);
+        updateVisibility();
+        draw();
+        if (state.frame % 8 === 0) {
+          drawMinimap();
+          updateUI();
+        }
+        if (ui.toast.classList.contains("show") && now > state.toastUntil) ui.toast.classList.remove("show");
+        requestAnimationFrame(loop);
+      }
+
+      canvas.addEventListener("mousemove", (event) => {
+        state.mouse.x = event.clientX;
+        state.mouse.y = event.clientY;
+        const w = screenToWorld(event.clientX, event.clientY);
+        state.mouse.worldX = w.x;
+        state.mouse.worldY = w.y;
+        if (state.drag) {
+          state.drag.x2 = event.clientX;
+          state.drag.y2 = event.clientY;
+        }
+      });
+
+      canvas.addEventListener("mousedown", (event) => {
+        if (event.button !== 0) return;
+        state.mouse.down = true;
+        state.mouse.sx = event.clientX;
+        state.mouse.sy = event.clientY;
+        const w = screenToWorld(event.clientX, event.clientY);
+        state.mouse.worldX = w.x;
+        state.mouse.worldY = w.y;
+        if (state.buildMode) return;
+        state.drag = { x1: event.clientX, y1: event.clientY, x2: event.clientX, y2: event.clientY };
+      });
+
+      canvas.addEventListener("mouseup", (event) => {
+        if (event.button !== 0) return;
+        state.mouse.down = false;
+        const w = screenToWorld(event.clientX, event.clientY);
+        if (state.buildMode) {
+          placeBuilding(state.buildMode, worldToTile(w.x), worldToTile(w.y));
+          state.drag = null;
+          return;
+        }
+
+        const drag = state.drag;
+        state.drag = null;
+        if (drag && Math.abs(drag.x2 - drag.x1) + Math.abs(drag.y2 - drag.y1) > 10) {
+          clearSelection();
+          const x1 = Math.min(drag.x1, drag.x2) + state.camera.x;
+          const y1 = Math.min(drag.y1, drag.y2) + state.camera.y;
+          const x2 = Math.max(drag.x1, drag.x2) + state.camera.x;
+          const y2 = Math.max(drag.y1, drag.y2) + state.camera.y;
+          for (const u of units) {
+            if (!isVisibleAt(u.x, u.y)) continue;
+            if (u.x >= x1 && u.y >= y1 && u.x <= x2 && u.y <= y2) {
+              u.selected = true;
+              state.selection.push(u);
+            }
+          }
+          state.selectedBuilding = null;
+          updateUI();
+          return;
+        }
+
+        selectOnly(getEntityAt(w.x, w.y));
+      });
+
+      canvas.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        const w = screenToWorld(event.clientX, event.clientY);
+        if (state.buildMode) {
+          state.buildMode = null;
+          updateUI();
+          return;
+        }
+        const resource = getResourceAt(w.x, w.y);
+        if (resource && selectionHas("worker")) commandHarvest(resource);
+        else commandMove(w.x, w.y);
+      });
+
+      minimap.addEventListener("mousedown", (event) => {
+        const rect = minimap.getBoundingClientRect();
+        const mx = (event.clientX - rect.left) / rect.width;
+        const my = (event.clientY - rect.top) / rect.height;
+        state.camera.x = clamp(mx * WORLD_W - window.innerWidth / 2, 0, WORLD_W - window.innerWidth);
+        state.camera.y = clamp(my * WORLD_H - window.innerHeight / 2, 0, WORLD_H - window.innerHeight);
+      });
+
+      window.addEventListener("keydown", (event) => {
+        const key = event.key.toLowerCase();
+        state.keys.add(key);
+        if (key === "escape") {
+          state.buildMode = null;
+          clearSelection();
+          updateUI();
+        }
+      });
+
+      window.addEventListener("keyup", (event) => {
+        state.keys.delete(event.key.toLowerCase());
+      });
+
+      window.addEventListener("resize", resize);
+
+      init();
+    })();
+  </script>
+</body>
+</html>

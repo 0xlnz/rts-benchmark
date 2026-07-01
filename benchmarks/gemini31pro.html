@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML5 RTS Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
+        canvas { display: block; }
+        #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
+
+        #topbar { 
+            background: linear-gradient(180deg, rgba(30,30,30,0.95), rgba(15,15,15,0.9));
+            color: white; padding: 10px 25px; display: flex; gap: 30px; font-weight: bold; 
+            pointer-events: auto; border-bottom: 2px solid #333; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; margin: 0 auto; width: fit-content;
+        }
+
+        .resource { display: flex; align-items: center; gap: 10px; font-size: 18px; text-shadow: 1px 1px 2px black; }
+        .icon { width: 22px; height: 22px; border-radius: 50%; display: inline-block; box-shadow: inset 0 -3px 5px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.2); }
+        .icon.gold { background: radial-gradient(circle at 35% 35%, #ffe600, #b8860b); }
+        .icon.wood { background: radial-gradient(circle at 35% 35%, #cd853f, #5c3a21); }
+
+        #bottombar { 
+            position: absolute; bottom: 0; left: 0; width: 100%; 
+            background: linear-gradient(0deg, rgba(15,15,15,1), rgba(35,35,35,0.95)); 
+            height: 160px; color: white; display: flex; pointer-events: auto; 
+            border-top: 2px solid #444; box-shadow: 0 -4px 15px rgba(0,0,0,0.7);
+        }
+
+        #infopanel { width: 280px; padding: 15px; border-right: 2px solid #222; background: rgba(0,0,0,0.3); display: flex; flex-direction: column; }
+        #actionpanel { padding: 15px; display: flex; gap: 12px; flex-wrap: wrap; flex: 1; align-content: flex-start; }
+
+        .btn { 
+            background: linear-gradient(180deg, #3a3a3a, #222); color: white; border: 1px solid #555; 
+            padding: 10px; cursor: pointer; border-radius: 8px; font-weight: bold; 
+            transition: all 0.1s; height: 65px; width: 130px; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4); text-transform: uppercase; font-size: 0.85em; letter-spacing: 0.5px;
+        }
+        .btn:hover { background: linear-gradient(180deg, #4a4a4a, #333); border-color: #777; transform: translateY(-2px); box-shadow: 0 6px 10px rgba(0,0,0,0.6); }
+        .btn:active { background: linear-gradient(180deg, #1a1a1a, #111); transform: translateY(1px); box-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .cost { font-size: 0.9em; color: #ffcc00; margin-top: 6px; text-shadow: 1px 1px 1px black; }
+
+        #minimap-container { width: 150px; height: 150px; border-left: 2px solid #222; position: relative; background: #000; flex-shrink: 0; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); }
+        #minimap { width: 100%; height: 100%; display: block; cursor: crosshair; }
+        #minimap-camera { position: absolute; border: 1px solid rgba(255,255,255,0.8); box-sizing: border-box; pointer-events: none; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); transition: border-color 0.2s; }
+
+        .title { margin: 0 0 5px 0; font-size: 1.1em; color: #4da6ff; text-transform: uppercase; letter-spacing: 1px; }
+        .desc { font-size: 0.9em; color: #aaa; margin-bottom: 12px; }
+        .healthbar-bg { width: 100%; height: 14px; background: #111; border: 1px solid #333; border-radius: 7px; overflow: hidden; position: relative; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
+        .healthbar-fg { width: 100%; height: 100%; background: linear-gradient(90deg, #27ae60, #2ecc71); transition: width 0.2s; }
+        #healthText { position: absolute; top: 0; left: 0; width: 100%; height: 100%; text-align: center; font-size: 10px; text-shadow: 1px 1px 0 #000; line-height: 14px; font-weight: bold; }
+
+        #infoTask { margin-top: auto; font-size: 0.85em; color: #ccc; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 6px; border: 1px solid #333; text-transform: uppercase; letter-spacing: 0.5px; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui">
+        <div id="topbar">
+            <div class="resource"><span class="icon gold"></span> <span id="goldText">1000</span></div>
+            <div class="resource"><span class="icon wood"></span> <span id="woodText">1000</span></div>
+        </div>
+        <div id="bottombar">
+            <div id="infopanel">
+                <h3 class="title" id="infoTitle">No Selection</h3>
+                <div class="desc" id="infoDesc">Select a unit or building to see details.</div>
+                <div id="infoHealth" style="display: none;">
+                    <div class="healthbar-bg">
+                        <div class="healthbar-fg" id="healthBar"></div>
+                        <div id="healthText">100/100</div>
+                    </div>
+                </div>
+                <div id="infoTask"></div>
+            </div>
+            <div id="actionpanel"></div>
+            <div id="minimap-container">
+                <canvas id="minimap"></canvas>
+                <div id="minimap-camera"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const minimap = document.getElementById('minimap');
+        const mctx = minimap.getContext('2d');
+
+        // UI Elements
+        const goldText = document.getElementById('goldText');
+        const woodText = document.getElementById('woodText');
+        const infoTitle = document.getElementById('infoTitle');
+        const infoDesc = document.getElementById('infoDesc');
+        const infoHealth = document.getElementById('infoHealth');
+        const healthBar = document.getElementById('healthBar');
+        const healthText = document.getElementById('healthText');
+        const infoTask = document.getElementById('infoTask');
+        const actionPanel = document.getElementById('actionpanel');
+        const minimapCamera = document.getElementById('minimap-camera');
+
+        // Constants
+        const MAP_WIDTH = 4000;
+        const MAP_HEIGHT = 4000;
+        const TILE_SIZE = 50;
+        const COLS = MAP_WIDTH / TILE_SIZE;
+        const ROWS = MAP_HEIGHT / TILE_SIZE;
+        const MINIMAP_SIZE = 150;
+
+        // State
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+        minimap.width = MINIMAP_SIZE;
+        minimap.height = MINIMAP_SIZE;
+
+        let camera = { x: 0, y: 0, speed: 20 };
+        let keys = {};
+        let mouse = { x: 0, y: 0, worldX: 0, worldY: 0, startX: 0, startY: 0, leftDown: false };
+        let selectionBox = null;
+        let placementMode = null;
+        let isDraggingMinimap = false;
+
+        let player = {
+            gold: 1000,
+            wood: 1000
+        };
+
+        let entities = [];
+        let selectedEntities = [];
+        let particles = [];
+
+        // Enums
+        const TEAM = { PLAYER: 1, NEUTRAL: 0 };
+        const TYPE = { UNIT: 1, BUILDING: 2, RESOURCE: 3 };
+
+        const FOG_UNEXPLORED = 0;
+        const FOG_EXPLORED = 1;
+        const FOG_VISIBLE = 2;
+        let fogMap = new Uint8Array(COLS * ROWS);
+        fogMap.fill(FOG_UNEXPLORED);
+        let visibleTiles = [];
+
+        class Entity {
+            constructor(x, y, radius, team, type) {
+                this.id = Math.random().toString(36).substr(2, 9);
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.team = team;
+                this.type = type;
+                this.selected = false;
+                this.hp = 100;
+                this.maxHp = 100;
+                this.name = "Entity";
+                this.vision = 300;
+                this.color = "gray";
+                this.remove = false;
+            }
+            update(dt) {}
+            draw(ctx) {}
+        }
+
+        class Resource extends Entity {
+            constructor(x, y, resType) {
+                super(x, y, 20, TEAM.NEUTRAL, TYPE.RESOURCE);
+                this.resType = resType; // 'gold' or 'wood'
+                this.amount = 5000;
+                this.name = resType === 'gold' ? "Gold Mine" : "Forest";
+                this.color = resType === 'gold' ? "#FFD700" : "#2ecc71";
+            }
+            draw(ctx) {
+                ctx.shadowColor = "rgba(0,0,0,0.6)";
+                ctx.shadowBlur = 6;
+                if (this.resType === 'wood') {
+                    ctx.fillStyle = "#5c3a21"; // trunk
+                    ctx.fillRect(this.x - 5, this.y, 10, this.radius + 8);
+                    ctx.fillStyle = this.color; // leaves
+                    ctx.beginPath(); ctx.arc(this.x, this.y - 8, this.radius + 2, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(this.x - 10, this.y - 3, this.radius - 2, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(this.x + 10, this.y - 3, this.radius - 2, 0, Math.PI * 2); ctx.fill();
+                } else {
+                    ctx.fillStyle = "#444"; // stone base
+                    ctx.beginPath(); ctx.arc(this.x, this.y + 6, this.radius + 4, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = this.color; // gold
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y - this.radius + 2);
+                    ctx.lineTo(this.x + this.radius - 2, this.y + this.radius - 2);
+                    ctx.lineTo(this.x - this.radius + 2, this.y + this.radius - 2);
+                    ctx.fill();
+                }
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class Building extends Entity {
+            constructor(x, y, bType) {
+                super(x, y, 40, TEAM.PLAYER, TYPE.BUILDING);
+                this.bType = bType;
+                this.name = bType === 'TownHall' ? "Town Hall" : "Barracks";
+                this.color = bType === 'TownHall' ? "#2980b9" : "#c0392b";
+                this.maxHp = bType === 'TownHall' ? 1000 : 800;
+                this.hp = this.maxHp;
+                this.vision = 500;
+                this.buildProgress = 0;
+                this.isConstructing = true;
+                this.queue = [];
+                this.trainTimer = 0;
+            }
+            update(dt) {
+                let preConstruct = this.isConstructing;
+                if (this.isConstructing) return;
+                
+                if (this.queue.length > 0) {
+                    this.trainTimer += dt;
+                    let current = this.queue[0];
+                    if (this.trainTimer >= current.time) {
+                        let unit = current.type === 'Worker' ? new Worker(this.x, this.y + this.radius + 30) : new Soldier(this.x, this.y + this.radius + 30);
+                        entities.push(unit);
+                        this.queue.shift();
+                        this.trainTimer = 0;
+                        if (this.selected) updateUI();
+                    }
+                }
+            }
+            draw(ctx) {
+                // Base
+                ctx.fillStyle = this.color;
+                ctx.shadowColor = "rgba(0,0,0,0.7)";
+                ctx.shadowBlur = 15;
+                ctx.fillRect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
+                ctx.shadowBlur = 0;
+                
+                // Details
+                if (this.bType === 'TownHall') {
+                    ctx.fillStyle = "#1abc9c";
+                    ctx.fillRect(this.x - this.radius + 8, this.y - this.radius + 8, this.radius * 2 - 16, this.radius * 2 - 16);
+                    ctx.fillStyle = "#f39c12"; 
+                    ctx.fillRect(this.x - 12, this.y + this.radius - 8, 24, 8); // Door
+                } else {
+                    ctx.fillStyle = "#8e44ad";
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y - this.radius);
+                    ctx.lineTo(this.x + this.radius, this.y);
+                    ctx.lineTo(this.x, this.y + this.radius);
+                    ctx.lineTo(this.x - this.radius, this.y);
+                    ctx.fill();
+                }
+                
+                if (this.isConstructing) {
+                    ctx.fillStyle = "rgba(0,0,0,0.75)";
+                    let h = (1 - this.buildProgress) * this.radius * 2;
+                    ctx.fillRect(this.x - this.radius, this.y - this.radius, this.radius * 2, h);
+                    
+                    ctx.fillStyle = "white";
+                    ctx.font = "bold 14px Inter";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(`${Math.floor(this.buildProgress*100)}%`, this.x, this.y);
+                }
+                
+                if (this.queue.length > 0 && !this.isConstructing) {
+                    let p = this.trainTimer / this.queue[0].time;
+                    ctx.fillStyle = "#111";
+                    ctx.fillRect(this.x - this.radius, this.y - this.radius - 18, this.radius * 2, 8);
+                    ctx.fillStyle = "#3498db";
+                    ctx.fillRect(this.x - this.radius, this.y - this.radius - 18, this.radius * 2 * p, 8);
+                    ctx.strokeStyle = "rgba(255,255,255,0.5)";
+                    ctx.strokeRect(this.x - this.radius, this.y - this.radius - 18, this.radius * 2, 8);
+                }
+                
+                ctx.strokeStyle = "rgba(255,255,255,0.3)";
+                ctx.lineWidth = 3;
+                ctx.strokeRect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
+            }
+        }
+
+        class Unit extends Entity {
+            constructor(x, y, uType) {
+                super(x, y, 12, TEAM.PLAYER, TYPE.UNIT);
+                this.uType = uType;
+                this.name = uType === 'Worker' ? "Worker" : "Soldier";
+                this.color = uType === 'Worker' ? "#3498db" : "#e74c3c";
+                this.speed = uType === 'Worker' ? 120 : 180;
+                this.maxHp = uType === 'Worker' ? 50 : 150;
+                this.hp = this.maxHp;
+                this.vision = uType === 'Worker' ? 300 : 450;
+                this.targetX = x;
+                this.targetY = y;
+                this.state = 'IDLE';
+            }
+            
+            commandMove(x, y) {
+                this.targetX = x;
+                this.targetY = y;
+                this.state = 'MOVING';
+            }
+            
+            updateMove(dt) {
+                let dx = this.targetX - this.x;
+                let dy = this.targetY - this.y;
+                let dist = Math.hypot(dx, dy);
+                
+                let sepX = 0, sepY = 0;
+                for (let e of entities) {
+                    if (e !== this && e.type === TYPE.UNIT) {
+                        let edx = this.x - e.x;
+                        let edy = this.y - e.y;
+                        let edist = Math.hypot(edx, edy);
+                        let minDist = this.radius + e.radius + 4;
+                        if (edist < minDist && edist > 0) {
+                            let push = (minDist - edist) / edist;
+                            sepX += edx * push * 5;
+                            sepY += edy * push * 5;
+                        }
+                    } else if (e.type === TYPE.BUILDING) {
+                        let edx = this.x - e.x;
+                        let edy = this.y - e.y;
+                        let r = e.radius * 1.5; 
+                        let edist = Math.hypot(edx, edy);
+                        if (edist < this.radius + r) {
+                            let push = (this.radius + r - edist) / edist;
+                            sepX += edx * push * 15;
+                            sepY += edy * push * 15;
+                        }
+                    }
+                }
+                
+                if (dist > 5) {
+                    let vx = (dx / dist) * this.speed + sepX * 10;
+                    let vy = (dy / dist) * this.speed + sepY * 10;
+                    
+                    let vDist = Math.hypot(vx, vy);
+                    if (vDist > this.speed) {
+                        vx = (vx / vDist) * this.speed;
+                        vy = (vy / vDist) * this.speed;
+                    }
+                    
+                    this.x += vx * dt;
+                    this.y += vy * dt;
+                    return false; 
+                } else if (Math.hypot(sepX, sepY) > 0.5) {
+                    this.x += sepX * dt * 15;
+                    this.y += sepY * dt * 15;
+                    return false;
+                } else {
+                    return true;
+                }
+                
+                this.x = Math.max(0, Math.min(MAP_WIDTH, this.x));
+                this.y = Math.max(0, Math.min(MAP_HEIGHT, this.y));
+            }
+            
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.shadowColor = "rgba(0,0,0,0.5)";
+                ctx.shadowBlur = 5;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.shadowBlur = 0;
+                
+                if (this.uType === 'Worker') {
+                    ctx.fillStyle = "#2980b9";
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.radius - 4, 0, Math.PI * 2); ctx.fill();
+                } else {
+                    ctx.fillStyle = "#900C3F";
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.radius - 4, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = "#ecf0f1";
+                    ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.x + 12, this.y - 12); ctx.stroke();
+                }
+                
+                ctx.strokeStyle = "rgba(255,255,255,0.9)";
+                ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.stroke();
+            }
+        }
+
+        class Worker extends Unit {
+            constructor(x, y) {
+                super(x, y, 'Worker');
+                this.carrying = null; 
+                this.targetResource = null;
+                this.targetBuilding = null;
+                this.gatherTimer = 0;
+            }
+            
+            commandGather(resource) {
+                this.targetResource = resource;
+                this.state = 'GATHERING_MOVE';
+                this.targetBuilding = null;
+            }
+            
+            commandBuild(building) {
+                this.targetBuilding = building;
+                this.state = 'BUILDING_MOVE';
+                this.targetResource = null;
+            }
+            
+            update(dt) {
+                if (this.state === 'MOVING') {
+                    if (this.updateMove(dt)) this.state = 'IDLE';
+                } 
+                else if (this.state === 'GATHERING_MOVE') {
+                    if (!this.targetResource || this.targetResource.remove) {
+                        this.state = 'IDLE';
+                        return;
+                    }
+                    this.targetX = this.targetResource.x;
+                    this.targetY = this.targetResource.y;
+                    
+                    let dist = Math.hypot(this.x - this.targetX, this.y - this.targetY);
+                    if (dist < this.targetResource.radius + this.radius + 8) {
+                        this.state = 'GATHERING';
+                        this.gatherTimer = 0;
+                    } else {
+                        this.updateMove(dt);
+                    }
+                }
+                else if (this.state === 'GATHERING') {
+                    if (!this.targetResource || this.targetResource.remove) {
+                        this.state = 'IDLE';
+                        return;
+                    }
+                    this.gatherTimer += dt;
+                    if (this.gatherTimer > 1.0) {
+                        this.carrying = { type: this.targetResource.resType, amount: 20 };
+                        this.targetResource.amount -= 20;
+                        if (this.targetResource.amount <= 0) this.targetResource.remove = true;
+                        this.state = 'RETURNING';
+                        
+                        let nearestTH = null;
+                        let minDist = Infinity;
+                        for (let e of entities) {
+                            if (e.type === TYPE.BUILDING && e.bType === 'TownHall' && !e.isConstructing) {
+                                let d = Math.hypot(this.x - e.x, this.y - e.y);
+                                if (d < minDist) { minDist = d; nearestTH = e; }
+                            }
+                        }
+                        if (nearestTH) {
+                            this.targetBuilding = nearestTH;
+                            this.targetX = nearestTH.x;
+                            this.targetY = nearestTH.y;
+                        } else {
+                            this.state = 'IDLE'; 
+                        }
+                    }
+                }
+                else if (this.state === 'RETURNING') {
+                    if (!this.targetBuilding || this.targetBuilding.remove) {
+                        let nearestTH = null;
+                        let minDist = Infinity;
+                        for (let e of entities) {
+                            if (e.type === TYPE.BUILDING && e.bType === 'TownHall' && !e.isConstructing) {
+                                let d = Math.hypot(this.x - e.x, this.y - e.y);
+                                if (d < minDist) { minDist = d; nearestTH = e; }
+                            }
+                        }
+                        if (nearestTH) {
+                            this.targetBuilding = nearestTH;
+                            this.targetX = nearestTH.x;
+                            this.targetY = nearestTH.y;
+                        } else {
+                            this.state = 'IDLE';
+                            return;
+                        }
+                    }
+                    
+                    let dist = Math.hypot(this.x - this.targetX, this.y - this.targetY);
+                    if (dist < this.targetBuilding.radius + this.radius + 10) {
+                        if (this.carrying.type === 'gold') player.gold += this.carrying.amount;
+                        if (this.carrying.type === 'wood') player.wood += this.carrying.amount;
+                        this.carrying = null;
+                        
+                        if (this.targetResource && !this.targetResource.remove) {
+                            this.state = 'GATHERING_MOVE';
+                        } else {
+                            this.state = 'IDLE';
+                        }
+                    } else {
+                        this.updateMove(dt);
+                    }
+                }
+                else if (this.state === 'BUILDING_MOVE') {
+                     if (!this.targetBuilding || this.targetBuilding.remove) {
+                        this.state = 'IDLE';
+                        return;
+                    }
+                    this.targetX = this.targetBuilding.x;
+                    this.targetY = this.targetBuilding.y;
+                    
+                    let dist = Math.hypot(this.x - this.targetX, this.y - this.targetY);
+                    if (dist < this.targetBuilding.radius + this.radius + 8) {
+                        this.state = 'BUILDING';
+                    } else {
+                        this.updateMove(dt);
+                    }
+                }
+                else if (this.state === 'BUILDING') {
+                    if (!this.targetBuilding || this.targetBuilding.remove || !this.targetBuilding.isConstructing) {
+                        this.state = 'IDLE';
+                        return;
+                    }
+                    let preConstruct = this.targetBuilding.isConstructing;
+                    this.targetBuilding.buildProgress += dt / 5.0; 
+                    if (this.targetBuilding.buildProgress >= 1) {
+                        this.targetBuilding.buildProgress = 1;
+                        this.targetBuilding.isConstructing = false;
+                        this.state = 'IDLE';
+                        if (preConstruct && this.targetBuilding.selected) updateUI();
+                    }
+                }
+            }
+            
+            draw(ctx) {
+                super.draw(ctx);
+                if (this.carrying) {
+                    ctx.fillStyle = this.carrying.type === 'gold' ? '#FFD700' : '#d35400';
+                    ctx.beginPath(); ctx.arc(this.x + 6, this.y - 6, 5, 0, Math.PI*2); ctx.fill();
+                    ctx.strokeStyle = "#111"; ctx.lineWidth = 1; ctx.stroke();
+                }
+                if (this.state === 'GATHERING') {
+                    ctx.fillStyle = "#111"; ctx.fillRect(this.x - 12, this.y - 22, 24, 4);
+                    ctx.fillStyle = "#f1c40f"; ctx.fillRect(this.x - 12, this.y - 22, 24 * this.gatherTimer, 4);
+                }
+            }
+        }
+
+        class Soldier extends Unit {
+            constructor(x, y) {
+                super(x, y, 'Soldier');
+            }
+            update(dt) {
+                if (this.state === 'MOVING') {
+                    if (this.updateMove(dt)) this.state = 'IDLE';
+                }
+            }
+        }
+
+        function updateFog() {
+            for (let i of visibleTiles) fogMap[i] = FOG_EXPLORED;
+            visibleTiles = [];
+            
+            for (let e of entities) {
+                if (e.team === TEAM.PLAYER) {
+                    let rTiles = Math.ceil(e.vision / TILE_SIZE);
+                    let cx = Math.floor(e.x / TILE_SIZE);
+                    let cy = Math.floor(e.y / TILE_SIZE);
+                    
+                    for (let y = cy - rTiles; y <= cy + rTiles; y++) {
+                        if (y < 0 || y >= ROWS) continue;
+                        for (let x = cx - rTiles; x <= cx + rTiles; x++) {
+                            if (x < 0 || x >= COLS) continue;
+                            let dx = x * TILE_SIZE + TILE_SIZE/2 - e.x;
+                            let dy = y * TILE_SIZE + TILE_SIZE/2 - e.y;
+                            if (dx*dx + dy*dy <= e.vision*e.vision) {
+                                let idx = y * COLS + x;
+                                fogMap[idx] = FOG_VISIBLE;
+                                visibleTiles.push(idx);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function updateCamera(dt) {
+            let edge = 25;
+            if (keys['ArrowLeft'] || keys['KeyA'] || (mouse.x < edge)) camera.x -= camera.speed;
+            if (keys['ArrowRight'] || keys['KeyD'] || (mouse.x > width - edge)) camera.x += camera.speed;
+            if (keys['ArrowUp'] || keys['KeyW'] || (mouse.y < edge)) camera.y -= camera.speed;
+            if (keys['ArrowDown'] || keys['KeyS'] || (mouse.y > height - edge && mouse.y < height)) camera.y += camera.speed;
+            
+            camera.x = Math.max(0, Math.min(MAP_WIDTH - width, camera.x));
+            camera.y = Math.max(0, Math.min(MAP_HEIGHT - height + 160, camera.y));
+        }
+
+        function drawMap(ctx) {
+            ctx.fillStyle = '#2c3e50'; // Base dark ground
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.save();
+            ctx.translate(-camera.x, -camera.y);
+            
+            // Draw a grid pattern for flavor
+            ctx.strokeStyle = "rgba(255,255,255,0.03)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            let startX = Math.floor(camera.x / TILE_SIZE) * TILE_SIZE;
+            let startY = Math.floor(camera.y / TILE_SIZE) * TILE_SIZE;
+            for (let x = startX; x < camera.x + width; x += TILE_SIZE) { ctx.moveTo(x, camera.y); ctx.lineTo(x, camera.y + height); }
+            for (let y = startY; y < camera.y + height; y += TILE_SIZE) { ctx.moveTo(camera.x, y); ctx.lineTo(camera.x + width, y); }
+            ctx.stroke();
+            
+            entities.sort((a,b) => a.y - b.y);
+            for (let e of entities) {
+                let tx = Math.floor(e.x / TILE_SIZE);
+                let ty = Math.floor(e.y / TILE_SIZE);
+                if (tx >= 0 && tx < COLS && ty >= 0 && ty < ROWS) {
+                    let f = fogMap[ty * COLS + tx];
+                    if (f === FOG_VISIBLE || (f === FOG_EXPLORED && e.type !== TYPE.UNIT)) {
+                        if (e.selected) {
+                            ctx.fillStyle = 'rgba(46, 204, 113, 0.4)';
+                            ctx.beginPath(); ctx.ellipse(e.x, e.y + e.radius*0.6, e.radius + 6, (e.radius + 6)*0.6, 0, 0, Math.PI*2); ctx.fill();
+                        }
+                        e.draw(ctx);
+                    }
+                }
+            }
+            
+            // Draw pings
+            for (let p of particles) {
+                if (p.type === 'ping') {
+                    ctx.strokeStyle = `rgba(46, 204, 113, ${p.life / p.maxLife})`;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    let r = (1 - p.life / p.maxLife) * 20;
+                    ctx.arc(p.x, p.y, r, 0, Math.PI*2);
+                    ctx.stroke();
+                }
+            }
+            
+            if (placementMode) {
+                let canBuild = true;
+                for (let e of entities) {
+                    if (e.type === TYPE.BUILDING || e.type === TYPE.RESOURCE) {
+                        if (Math.hypot(e.x - mouse.worldX, e.y - mouse.worldY) < e.radius + 40) {
+                            canBuild = false; break;
+                        }
+                    }
+                }
+                if (mouse.worldX < 40 || mouse.worldX > MAP_WIDTH - 40 || mouse.worldY < 40 || mouse.worldY > MAP_HEIGHT - 40) canBuild = false;
+
+                ctx.fillStyle = (player.gold >= placementMode.costGold && player.wood >= placementMode.costWood && canBuild) ? 'rgba(46, 204, 113, 0.5)' : 'rgba(231, 76, 60, 0.5)';
+                let r = 40;
+                ctx.fillRect(mouse.worldX - r, mouse.worldY - r, r*2, r*2);
+                ctx.strokeStyle = "rgba(255,255,255,0.9)";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(mouse.worldX - r, mouse.worldY - r, r*2, r*2);
+            }
+            
+            // Fog of War overlay
+            for (let y = Math.floor(camera.y/TILE_SIZE); y <= Math.ceil((camera.y+height)/TILE_SIZE); y++) {
+                if (y < 0 || y >= ROWS) continue;
+                for (let x = Math.floor(camera.x/TILE_SIZE); x <= Math.ceil((camera.x+width)/TILE_SIZE); x++) {
+                    if (x < 0 || x >= COLS) continue;
+                    let idx = y * COLS + x;
+                    let f = fogMap[idx];
+                    if (f !== FOG_VISIBLE) {
+                        ctx.fillStyle = f === FOG_UNEXPLORED ? '#0f141a' : 'rgba(15, 20, 26, 0.6)';
+                        ctx.fillRect(x * TILE_SIZE - 1, y * TILE_SIZE - 1, TILE_SIZE + 2, TILE_SIZE + 2);
+                    }
+                }
+            }
+            
+            if (mouse.leftDown && !placementMode) {
+                ctx.strokeStyle = 'rgba(46, 204, 113, 0.9)';
+                ctx.fillStyle = 'rgba(46, 204, 113, 0.2)';
+                ctx.lineWidth = 1;
+                let x = Math.min(mouse.startX, mouse.worldX);
+                let y = Math.min(mouse.startY, mouse.worldY);
+                let w = Math.abs(mouse.worldX - mouse.startX);
+                let h = Math.abs(mouse.worldY - mouse.startY);
+                ctx.fillRect(x, y, w, h);
+                ctx.strokeRect(x, y, w, h);
+            }
+            
+            ctx.restore();
+        }
+
+        function drawMinimap() {
+            let scaleX = MINIMAP_SIZE / MAP_WIDTH;
+            let scaleY = MINIMAP_SIZE / MAP_HEIGHT;
+            
+            mctx.fillStyle = '#0f141a';
+            mctx.fillRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE);
+            
+            for (let e of entities) {
+                let tx = Math.floor(e.x / TILE_SIZE);
+                let ty = Math.floor(e.y / TILE_SIZE);
+                if (tx >= 0 && tx < COLS && ty >= 0 && ty < ROWS) {
+                    let f = fogMap[ty * COLS + tx];
+                    if (f !== FOG_UNEXPLORED) {
+                        mctx.fillStyle = e.team === TEAM.PLAYER ? (e.type === TYPE.BUILDING ? '#3498db' : '#ecf0f1') : (e.resType === 'gold' ? '#f1c40f' : '#2ecc71');
+                        let r = Math.max(1.5, e.radius * scaleX);
+                        mctx.fillRect(e.x * scaleX - r, e.y * scaleY - r, r*2, r*2);
+                    }
+                }
+            }
+            
+            let imgData = mctx.getImageData(0,0,MINIMAP_SIZE,MINIMAP_SIZE);
+            for(let y=0; y<MINIMAP_SIZE; y++) {
+                for(let x=0; x<MINIMAP_SIZE; x++) {
+                    let wx = Math.floor(x / scaleX / TILE_SIZE);
+                    let wy = Math.floor(y / scaleY / TILE_SIZE);
+                    if (wx >= 0 && wx < COLS && wy >= 0 && wy < ROWS) {
+                        let f = fogMap[wy * COLS + wx];
+                        if (f === FOG_UNEXPLORED) {
+                            let i = (y*MINIMAP_SIZE + x) * 4;
+                            imgData.data[i] = 15; imgData.data[i+1] = 20; imgData.data[i+2] = 26;
+                        } else if (f === FOG_EXPLORED) {
+                            let i = (y*MINIMAP_SIZE + x) * 4;
+                            imgData.data[i] = Math.floor(imgData.data[i]*0.6);
+                            imgData.data[i+1] = Math.floor(imgData.data[i+1]*0.6);
+                            imgData.data[i+2] = Math.floor(imgData.data[i+2]*0.6);
+                        }
+                    }
+                }
+            }
+            mctx.putImageData(imgData, 0, 0);
+            
+            minimapCamera.style.left = (camera.x * scaleX) + 'px';
+            minimapCamera.style.top = (camera.y * scaleY) + 'px';
+            minimapCamera.style.width = (width * scaleX) + 'px';
+            minimapCamera.style.height = (height * scaleY) + 'px';
+        }
+
+        function updateUI() {
+            actionPanel.innerHTML = '';
+            
+            if (selectedEntities.length === 0) {
+                infoTitle.innerText = "No Selection";
+                infoDesc.innerText = "Select a unit or building to see details.";
+                infoHealth.style.display = 'none';
+                infoTask.innerText = 'WAITING FOR ORDERS';
+                return;
+            }
+            
+            if (selectedEntities.length > 1) {
+                infoTitle.innerText = `${selectedEntities.length} Units Selected`;
+                infoDesc.innerText = "Mixed Group";
+                infoHealth.style.display = 'none';
+                infoTask.innerText = 'MULTIPLE UNITS STANDING BY';
+                
+                if (selectedEntities.some(e => e.uType === 'Worker')) {
+                    addActionButton("Build Town Hall", "500G 500W", () => { placementMode = { type: 'TownHall', costGold: 500, costWood: 500 }; });
+                    addActionButton("Build Barracks", "300G 200W", () => { placementMode = { type: 'Barracks', costGold: 300, costWood: 200 }; });
+                }
+                return;
+            }
+            
+            let ent = selectedEntities[0];
+            infoTitle.innerText = ent.name;
+            infoHealth.style.display = 'block';
+            healthBar.style.width = (ent.hp / ent.maxHp * 100) + '%';
+            healthText.innerText = `${Math.floor(ent.hp)}/${ent.maxHp}`;
+            
+            if (ent.type === TYPE.UNIT) {
+                infoDesc.innerText = "Team: " + (ent.team === TEAM.PLAYER ? "Player" : "Enemy");
+                infoTask.innerText = `STATUS: ${ent.state}`;
+                if (ent.uType === 'Worker') {
+                    addActionButton("Build Town Hall", "500G 500W", () => { placementMode = { type: 'TownHall', costGold: 500, costWood: 500 }; });
+                    addActionButton("Build Barracks", "300G 200W", () => { placementMode = { type: 'Barracks', costGold: 300, costWood: 200 }; });
+                }
+            } else if (ent.type === TYPE.BUILDING) {
+                infoDesc.innerText = ent.isConstructing ? `Constructing (${Math.floor(ent.buildProgress*100)}%)` : "Ready for Operations";
+                if (ent.isConstructing) {
+                    infoTask.innerText = 'CONSTRUCTION IN PROGRESS';
+                } else {
+                    infoTask.innerText = ent.queue.length > 0 ? `QUEUE: ${ent.queue.length} UNIT(S)` : 'IDLE';
+                    if (ent.bType === 'TownHall') {
+                        addActionButton("Train Worker", "50G", () => {
+                            if (player.gold >= 50) { player.gold -= 50; ent.queue.push({type: 'Worker', time: 5.0}); }
+                        });
+                    } else if (ent.bType === 'Barracks') {
+                        addActionButton("Train Soldier", "100G", () => {
+                            if (player.gold >= 100) { player.gold -= 100; ent.queue.push({type: 'Soldier', time: 10.0}); }
+                        });
+                    }
+                }
+            } else if (ent.type === TYPE.RESOURCE) {
+                infoDesc.innerText = `Remaining Amount: ${ent.amount}`;
+                infoTask.innerText = 'READY FOR HARVESTING';
+            }
+        }
+
+        function addActionButton(label, cost, onClick) {
+            let btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.innerHTML = `<div>${label}</div><div class="cost">${cost}</div>`;
+            btn.onclick = onClick;
+            actionPanel.appendChild(btn);
+        }
+
+        // Mouse Events
+        window.addEventListener('mousedown', e => {
+            if (e.clientY > height - 160) return; 
+            if (e.clientY < 60) return;
+            
+            let wx = e.clientX + camera.x;
+            let wy = e.clientY + camera.y;
+            
+            if (e.button === 0) {
+                if (placementMode) {
+                    let canBuild = true;
+                    for (let ent of entities) {
+                        if (ent.type === TYPE.BUILDING || ent.type === TYPE.RESOURCE) {
+                            if (Math.hypot(ent.x - wx, ent.y - wy) < ent.radius + 40) { canBuild = false; break; }
+                        }
+                    }
+                    if (wx < 40 || wx > MAP_WIDTH - 40 || wy < 40 || wy > MAP_HEIGHT - 40) canBuild = false;
+
+                    if (canBuild && player.gold >= placementMode.costGold && player.wood >= placementMode.costWood) {
+                        let b = new Building(wx, wy, placementMode.type);
+                        entities.push(b);
+                        player.gold -= placementMode.costGold;
+                        player.wood -= placementMode.costWood;
+                        
+                        for (let s of selectedEntities) {
+                            if (s.uType === 'Worker') s.commandBuild(b);
+                        }
+                        placementMode = null;
+                        updateUI();
+                    }
+                } else {
+                    mouse.leftDown = true;
+                    mouse.startX = wx; mouse.startY = wy;
+                    mouse.endX = wx; mouse.endY = wy;
+                }
+            } else if (e.button === 2) {
+                placementMode = null;
+                let targetEntity = null;
+                for (let i = entities.length - 1; i >= 0; i--) {
+                    let ent = entities[i];
+                    if (Math.hypot(ent.x - wx, ent.y - wy) < ent.radius) {
+                        targetEntity = ent; break;
+                    }
+                }
+                
+                let units = selectedEntities.filter(e => e.type === TYPE.UNIT);
+                if (units.length > 0) {
+                    particles.push({x: wx, y: wy, life: 0.5, maxLife: 0.5, type: 'ping'});
+                    for (let i = 0; i < units.length; i++) {
+                        let u = units[i];
+                        if (targetEntity) {
+                            if (targetEntity.type === TYPE.RESOURCE && u.uType === 'Worker') u.commandGather(targetEntity);
+                            else if (targetEntity.type === TYPE.BUILDING && targetEntity.isConstructing && u.uType === 'Worker') u.commandBuild(targetEntity);
+                            else u.commandMove(targetEntity.x, targetEntity.y);
+                        } else {
+                            let ox = (Math.random() - 0.5) * 20 * Math.sqrt(units.length);
+                            let oy = (Math.random() - 0.5) * 20 * Math.sqrt(units.length);
+                            u.commandMove(wx + ox, wy + oy);
+                        }
+                    }
+                }
+            }
+        });
+
+        window.addEventListener('mousemove', e => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+            mouse.worldX = e.clientX + camera.x;
+            mouse.worldY = e.clientY + camera.y;
+            
+            if (mouse.leftDown) {
+                mouse.endX = mouse.worldX;
+                mouse.endY = mouse.worldY;
+            }
+            if (isDraggingMinimap) moveMinimapCamera(e);
+        });
+
+        window.addEventListener('mouseup', e => {
+            isDraggingMinimap = false;
+            if (e.button === 0 && mouse.leftDown) {
+                mouse.leftDown = false;
+                
+                let minX = Math.min(mouse.startX, mouse.endX);
+                let maxX = Math.max(mouse.startX, mouse.endX);
+                let minY = Math.min(mouse.startY, mouse.endY);
+                let maxY = Math.max(mouse.startY, mouse.endY);
+                
+                if (!e.shiftKey) {
+                    for (let ent of selectedEntities) ent.selected = false;
+                    selectedEntities = [];
+                }
+                
+                if (Math.abs(maxX - minX) < 5 && Math.abs(maxY - minY) < 5) {
+                    for (let i = entities.length - 1; i >= 0; i--) {
+                        let ent = entities[i];
+                        if (Math.hypot(ent.x - mouse.startX, ent.y - mouse.startY) < ent.radius) {
+                            let tx = Math.floor(ent.x / TILE_SIZE);
+                            let ty = Math.floor(ent.y / TILE_SIZE);
+                            if (tx >= 0 && tx < COLS && ty >= 0 && ty < ROWS) {
+                                 if (fogMap[ty * COLS + tx] !== FOG_UNEXPLORED || ent.team === TEAM.PLAYER) {
+                                     ent.selected = true;
+                                     selectedEntities.push(ent);
+                                     break; 
+                                 }
+                            }
+                        }
+                    }
+                } else {
+                    for (let ent of entities) {
+                        if (ent.team === TEAM.PLAYER && ent.x > minX && ent.x < maxX && ent.y > minY && ent.y < maxY) {
+                            ent.selected = true;
+                            selectedEntities.push(ent);
+                        }
+                    }
+                }
+                
+                let players = selectedEntities.filter(s => s.team === TEAM.PLAYER);
+                if (players.length > 0) {
+                    selectedEntities.forEach(s => { if(s.team !== TEAM.PLAYER) s.selected = false; });
+                    selectedEntities = players;
+                }
+                
+                let pUnits = selectedEntities.filter(s => s.type === TYPE.UNIT);
+                let pBuildings = selectedEntities.filter(s => s.type === TYPE.BUILDING);
+                if (pUnits.length > 0 && pBuildings.length > 0) {
+                    pBuildings.forEach(s => s.selected = false);
+                    selectedEntities = pUnits;
+                }
+                
+                updateUI();
+            }
+        });
+
+        window.addEventListener('contextmenu', e => e.preventDefault());
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        window.addEventListener('resize', () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        });
+
+        minimap.addEventListener('mousedown', e => {
+            isDraggingMinimap = true;
+            moveMinimapCamera(e);
+        });
+
+        function moveMinimapCamera(e) {
+            let rect = minimap.getBoundingClientRect();
+            let mx = e.clientX - rect.left;
+            let my = e.clientY - rect.top;
+            mx = Math.max(0, Math.min(MINIMAP_SIZE, mx));
+            my = Math.max(0, Math.min(MINIMAP_SIZE, my));
+            
+            let scaleX = MAP_WIDTH / MINIMAP_SIZE;
+            let scaleY = MAP_HEIGHT / MINIMAP_SIZE;
+            
+            camera.x = mx * scaleX - width / 2;
+            camera.y = my * scaleY - height / 2;
+        }
+
+        let lastTime = performance.now();
+        function loop(time) {
+            let dt = (time - lastTime) / 1000;
+            lastTime = time;
+            if (dt > 0.1) dt = 0.1;
+            
+            updateCamera(dt);
+            
+            for (let i = particles.length-1; i>=0; i--) {
+                particles[i].life -= dt;
+                if (particles[i].life <= 0) particles.splice(i, 1);
+            }
+            
+            entities = entities.filter(e => !e.remove && e.hp > 0);
+            selectedEntities = selectedEntities.filter(e => !e.remove && e.hp > 0);
+            
+            for (let e of entities) e.update(dt);
+            
+            updateFog();
+            drawMap(ctx);
+            drawMinimap();
+            
+            goldText.innerText = player.gold;
+            woodText.innerText = player.wood;
+            
+            if (selectedEntities.length === 1) {
+                let ent = selectedEntities[0];
+                healthBar.style.width = (ent.hp / ent.maxHp * 100) + '%';
+                healthText.innerText = `${Math.floor(ent.hp)}/${ent.maxHp}`;
+                if (ent.type === TYPE.UNIT) infoTask.innerText = `STATUS: ${ent.state}`;
+                if (ent.type === TYPE.BUILDING) {
+                    infoDesc.innerText = ent.isConstructing ? `Constructing (${Math.floor(ent.buildProgress*100)}%)` : "Ready for Operations";
+                    if (!ent.isConstructing) infoTask.innerText = ent.queue.length > 0 ? `QUEUE: ${ent.queue.length} UNIT(S)` : 'IDLE';
+                }
+                if (ent.type === TYPE.RESOURCE) infoDesc.innerText = `Remaining Amount: ${ent.amount}`;
+            }
+            
+            requestAnimationFrame(loop);
+        }
+
+        function init() {
+            let startX = 1000;
+            let startY = 1000;
+
+            for (let c = 0; c < 20; c++) {
+                let cx = Math.random() * (MAP_WIDTH - 200) + 100;
+                let cy = Math.random() * (MAP_HEIGHT - 200) + 100;
+                for (let i = 0; i < 15; i++) {
+                    let x = cx + (Math.random() - 0.5) * 400;
+                    let y = cy + (Math.random() - 0.5) * 400;
+                    x = Math.max(50, Math.min(MAP_WIDTH-50, x));
+                    y = Math.max(50, Math.min(MAP_HEIGHT-50, y));
+                    if (Math.hypot(x - startX, y - startY) > 300) entities.push(new Resource(x, y, 'wood'));
+                }
+            }
+            for (let c = 0; c < 12; c++) {
+                let cx = Math.random() * (MAP_WIDTH - 200) + 100;
+                let cy = Math.random() * (MAP_HEIGHT - 200) + 100;
+                if (Math.hypot(cx - startX, cy - startY) > 300) entities.push(new Resource(cx, cy, 'gold'));
+            }
+
+            let th = new Building(startX, startY, 'TownHall');
+            th.isConstructing = false; th.buildProgress = 1;
+            entities.push(th);
+            
+            for (let i=0; i<4; i++) {
+                entities.push(new Worker(startX - 60 + i * 40, startY + 80));
+            }
+            
+            entities.push(new Resource(startX + 180, startY, 'gold'));
+            for (let i=0; i<8; i++) {
+                entities.push(new Resource(startX - 200 + Math.random()*80, startY - 150 + Math.random()*80, 'wood'));
+            }
+            
+            camera.x = startX - width / 2;
+            camera.y = startY - height / 2;
+            
+            updateUI();
+            requestAnimationFrame(loop);
+        }
+
+        init();
+    </script>
+</body>
+</html>

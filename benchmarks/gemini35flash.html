@@ -1,0 +1,3912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aether Horizon: Quantum Colony - RTS Sandbox</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&family=Orbitron:wght@400;600;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <!-- FontAwesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    /* Design Tokens & Core Styling */
+    :root {
+      --bg-darker: #05070c;
+      --bg-dark: #0b0f19;
+      --bg-panel: rgba(11, 15, 25, 0.75);
+      --border-glow: rgba(0, 240, 255, 0.3);
+      --border-glow-hover: rgba(0, 240, 255, 0.6);
+      
+      --color-cyan: #00f0ff;
+      --color-blue: #0088ff;
+      --color-yellow: #ffdd00;
+      --color-green: #00ff66;
+      --color-red: #ff3344;
+      --color-purple: #9d00ff;
+      --color-text: #e2e8f0;
+      --color-text-muted: #94a3b8;
+      
+      --font-ui: 'Inter', sans-serif;
+      --font-cyber: 'Orbitron', sans-serif;
+      --font-mono: 'Share Tech Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-darker);
+      color: var(--color-text);
+      font-family: var(--font-ui);
+    }
+
+    /* Main Container layout */
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Game Canvas */
+    #game-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      display: block;
+      cursor: default;
+    }
+
+    /* Interface Layer */
+    .hud-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .hud-interactive {
+      pointer-events: auto;
+    }
+
+    /* Glassmorphism Panel style */
+    .glass-panel {
+      background: var(--bg-panel);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-glow);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5),
+                  inset 0 0 15px rgba(0, 240, 255, 0.05);
+      border-radius: 6px;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .glass-panel:hover {
+      border-color: rgba(0, 240, 255, 0.45);
+    }
+
+    /* Top Stats Bar */
+    #top-bar {
+      width: 100%;
+      height: 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+      background: linear-gradient(180deg, rgba(5, 7, 12, 0.9) 0%, rgba(11, 15, 25, 0.7) 100%);
+      border-bottom: 1px solid var(--border-glow);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+
+    .top-bar-section {
+      display: flex;
+      align-items: center;
+      gap: 25px;
+    }
+
+    .stat-display {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-cyber);
+      font-size: 14px;
+      font-weight: 600;
+      text-shadow: 0 0 8px currentColor;
+    }
+
+    .stat-display.crystals { color: var(--color-cyan); }
+    .stat-display.power { color: var(--color-yellow); }
+    .stat-display.units { color: var(--color-green); }
+    .stat-display.objective { color: var(--color-purple); }
+
+    .stat-val {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      color: var(--color-text);
+    }
+
+    #mission-timer {
+      font-family: var(--font-mono);
+      font-size: 16px;
+      color: var(--color-text-muted);
+      border-left: 1px solid rgba(255,255,255,0.1);
+      padding-left: 15px;
+    }
+
+    .top-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: var(--color-text);
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-family: var(--font-cyber);
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .top-btn:hover {
+      background: rgba(0, 240, 255, 0.15);
+      border-color: var(--color-cyan);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    /* Bottom HUD Layout */
+    #bottom-hud {
+      display: grid;
+      grid-template-columns: 240px 1fr 300px;
+      gap: 15px;
+      padding: 15px;
+      width: 100%;
+      height: 230px;
+    }
+
+    /* Minimap (Left Panel) */
+    #minimap-panel {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 8px;
+      overflow: hidden;
+    }
+
+    #minimap-canvas {
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 5, 10, 0.9);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 4px;
+      cursor: crosshair;
+    }
+
+    .panel-label {
+      position: absolute;
+      top: 4px;
+      left: 12px;
+      font-family: var(--font-cyber);
+      font-size: 9px;
+      color: var(--color-cyan);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    /* Selection Details (Center Panel) */
+    #selection-panel {
+      position: relative;
+      display: flex;
+      padding: 15px;
+      gap: 20px;
+      align-items: center;
+    }
+
+    #selection-portrait {
+      width: 120px;
+      height: 100%;
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #selection-portrait-canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    #selection-details {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
+      padding: 5px 0;
+    }
+
+    .selected-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .selected-name {
+      font-family: var(--font-cyber);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--color-cyan);
+    }
+
+    .selected-count {
+      font-size: 12px;
+      color: var(--color-text-muted);
+    }
+
+    .hp-bar-container {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 8px 0;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .hp-bar-fill {
+      height: 100%;
+      width: 100%;
+      background: var(--color-green);
+      box-shadow: 0 0 8px var(--color-green);
+      transition: width 0.2s ease-out, background 0.3s;
+    }
+
+    .selected-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--color-text-muted);
+    }
+
+    .selected-stats span {
+      color: var(--color-text);
+    }
+
+    /* Multi-selection grid view */
+    #selection-multi-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 6px;
+      width: 100%;
+      max-height: 140px;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+
+    .multi-select-icon {
+      aspect-ratio: 1;
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 4px;
+      background: rgba(0,0,0,0.5);
+      position: relative;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 14px;
+      color: var(--color-cyan);
+      transition: all 0.15s;
+    }
+
+    .multi-select-icon:hover {
+      border-color: var(--color-cyan);
+      background: rgba(0, 240, 255, 0.15);
+      box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+    }
+
+    .multi-select-icon .hp-mini {
+      position: absolute;
+      bottom: 2px;
+      left: 2px;
+      right: 2px;
+      height: 3px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 1px;
+      overflow: hidden;
+    }
+
+    .multi-select-icon .hp-mini-fill {
+      height: 100%;
+      background: var(--color-green);
+    }
+
+    /* Action Command Grid (Right Panel) */
+    #action-panel {
+      position: relative;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #action-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 8px;
+      flex: 1;
+    }
+
+    .action-btn {
+      background: rgba(0, 20, 40, 0.5);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 4px;
+      color: var(--color-text);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .action-btn:hover:not(:disabled) {
+      border-color: var(--color-cyan);
+      background: rgba(0, 240, 255, 0.15);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+      transform: scale(1.03);
+    }
+
+    .action-btn:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+
+    .action-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      border-color: rgba(255,255,255,0.05);
+    }
+
+    .action-btn i {
+      font-size: 18px;
+      color: var(--color-cyan);
+    }
+
+    .action-btn span {
+      font-family: var(--font-cyber);
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .action-btn .cost {
+      position: absolute;
+      bottom: 2px;
+      right: 4px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--color-yellow);
+    }
+
+    .action-btn .hotkey {
+      position: absolute;
+      top: 2px;
+      left: 4px;
+      font-family: var(--font-mono);
+      font-size: 8px;
+      color: var(--color-text-muted);
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 0 2px;
+      border-radius: 2px;
+    }
+
+    /* Production Queue Visualizer */
+    .queue-container {
+      position: absolute;
+      bottom: 5px;
+      left: 15px;
+      right: 15px;
+      height: 12px;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(0, 240, 255, 0.15);
+      border-radius: 3px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .queue-progress {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--color-cyan) 0%, var(--color-blue) 100%);
+      box-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+    }
+
+    /* Placement Help Banner */
+    #placement-banner {
+      position: absolute;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 25px;
+      background: rgba(5, 7, 12, 0.95);
+      border: 1px dashed var(--color-cyan);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+      border-radius: 6px;
+      color: var(--color-cyan);
+      font-family: var(--font-cyber);
+      font-size: 14px;
+      z-index: 100;
+      pointer-events: none;
+      display: none;
+      animation: pulse 1.5s infinite alternate;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.8; box-shadow: 0 0 5px rgba(0,240,255,0.2); }
+      100% { opacity: 1; box-shadow: 0 0 20px rgba(0,240,255,0.4); }
+    }
+
+    /* Selection Box overlay in canvas */
+    #selection-box {
+      border: 1px dashed var(--color-green);
+      background: rgba(0, 255, 102, 0.05);
+      position: absolute;
+      z-index: 5;
+      pointer-events: none;
+      display: none;
+    }
+
+    /* Modals & Popups */
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(3, 5, 10, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      width: 550px;
+      padding: 35px;
+      border: 1px solid var(--border-glow);
+      box-shadow: 0 0 40px rgba(0, 240, 255, 0.25);
+      text-align: center;
+    }
+
+    .modal-title {
+      font-family: var(--font-cyber);
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--color-cyan);
+      letter-spacing: 2px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      text-shadow: 0 0 12px var(--color-cyan);
+    }
+
+    .modal-body {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--color-text-muted);
+      margin-bottom: 25px;
+      text-align: left;
+    }
+
+    .modal-body h3 {
+      font-family: var(--font-cyber);
+      color: var(--color-text);
+      font-size: 14px;
+      margin-top: 15px;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+
+    .modal-body ul {
+      padding-left: 20px;
+      margin: 5px 0;
+    }
+
+    .modal-body li {
+      margin-bottom: 4px;
+    }
+
+    .modal-btn {
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(0, 136, 255, 0.3) 100%);
+      border: 1px solid var(--color-cyan);
+      color: white;
+      padding: 12px 30px;
+      border-radius: 4px;
+      font-family: var(--font-cyber);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 1px;
+    }
+
+    .modal-btn:hover {
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.35) 0%, rgba(0, 136, 255, 0.5) 100%);
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin-top: 15px;
+      background: rgba(0,0,0,0.3);
+      padding: 12px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .control-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .control-item strong {
+      color: var(--color-cyan);
+      font-family: var(--font-cyber);
+      font-size: 11px;
+    }
+
+    .control-item span {
+      font-size: 12px;
+    }
+
+    /* Status Notifications overlay */
+    #notif-container {
+      position: absolute;
+      top: 60px;
+      right: 20px;
+      z-index: 150;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .notif-toast {
+      padding: 10px 18px;
+      background: rgba(11, 15, 25, 0.9);
+      border-left: 4px solid var(--color-cyan);
+      border-radius: 0 4px 4px 0;
+      font-size: 12px;
+      color: var(--color-text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      animation: slideIn 0.25s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+      pointer-events: none;
+    }
+
+    .notif-toast.warn {
+      border-left-color: var(--color-red);
+    }
+
+    .notif-toast.success {
+      border-left-color: var(--color-green);
+    }
+
+    @keyframes slideIn {
+      0% { transform: translateX(120%); opacity: 0; }
+      100% { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes slideOut {
+      0% { transform: translateX(0); opacity: 1; }
+      100% { transform: translateX(120%); opacity: 0; }
+    }
+
+    /* Floating text styling */
+    .floating-world-text {
+      position: absolute;
+      pointer-events: none;
+      z-index: 8;
+      font-family: var(--font-mono);
+      font-weight: bold;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+      font-size: 12px;
+      animation: floatUp 1.2s forwards;
+    }
+
+    @keyframes floatUp {
+      0% { transform: translateY(0); opacity: 1; }
+      100% { transform: translateY(-30px); opacity: 0; }
+    }
+
+    /* Tooltips */
+    .tooltip-holder {
+      position: relative;
+    }
+
+    /* Custom scrollbar for multi selection grid */
+    #selection-multi-grid::-webkit-scrollbar {
+      width: 4px;
+    }
+    #selection-multi-grid::-webkit-scrollbar-track {
+      background: rgba(0,0,0,0.1);
+    }
+    #selection-multi-grid::-webkit-scrollbar-thumb {
+      background: var(--color-cyan);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-container">
+    
+    <!-- Top-level Canvas -->
+    <canvas id="game-canvas"></canvas>
+    
+    <!-- Box Selection HUD Element -->
+    <div id="selection-box"></div>
+    
+    <!-- UI HUD Overlays -->
+    <div class="hud-layer">
+      
+      <!-- Top Resource Bar -->
+      <div id="top-bar" class="hud-interactive">
+        <div class="top-bar-section">
+          <div class="stat-display crystals" title="Aether Crystals: Mine from nodes using Drones">
+            <i class="fa-solid fa-gem"></i>
+            <span class="stat-val" id="val-crystals">400</span>
+          </div>
+          <div class="stat-display power" title="Power: Solar Arrays provide energy to run buildings">
+            <i class="fa-solid fa-bolt"></i>
+            <span class="stat-val" id="val-power">5/5</span>
+          </div>
+          <div class="stat-display units" title="Crew Units: Drones, Raiders, Goliaths currently deployed">
+            <i class="fa-solid fa-users"></i>
+            <span class="stat-val" id="val-units">1/20</span>
+          </div>
+          <div class="stat-display objective" title="Exploration Progress & Hostile Spire Eradication">
+            <i class="fa-solid fa-compass"></i>
+            <span class="stat-val" id="val-objective">Explored: 0% | Spires: 4/4</span>
+          </div>
+        </div>
+        
+        <div class="top-bar-section">
+          <div id="mission-timer">00:00</div>
+          <button class="top-btn" id="btn-toggle-instructions">
+            <i class="fa-solid fa-circle-question"></i> Guide
+          </button>
+          <button class="top-btn" onclick="window.location.reload()">
+            <i class="fa-solid fa-rotate-left"></i> Restart
+          </button>
+        </div>
+      </div>
+
+      <!-- Placement help text banner -->
+      <div id="placement-banner">
+        Left-click to place building. Right-click to cancel.
+      </div>
+      
+      <!-- Notifications Toast list -->
+      <div id="notif-container"></div>
+      
+      <!-- Bottom HUD Layout -->
+      <div id="bottom-hud" class="hud-interactive">
+        
+        <!-- Minimap Panel -->
+        <div id="minimap-panel" class="glass-panel">
+          <span class="panel-label">Tactical Minimap</span>
+          <canvas id="minimap-canvas"></canvas>
+        </div>
+        
+        <!-- Selection Info Display -->
+        <div id="selection-panel" class="glass-panel">
+          <span class="panel-label">Sensor Feed</span>
+          
+          <div id="selection-portrait">
+            <!-- Portrait Canvas is drawn dynamically based on what is selected -->
+            <canvas id="selection-portrait-canvas" width="120" height="150"></canvas>
+          </div>
+          
+          <div id="selection-details">
+            <div class="selected-title-row">
+              <div class="selected-name" id="selected-name">Nexus Command</div>
+              <div class="selected-count" id="selected-count"></div>
+            </div>
+            
+            <div class="hp-bar-container">
+              <div class="hp-bar-fill" id="selected-hp-bar"></div>
+            </div>
+            
+            <!-- Standard Stats -->
+            <div class="selected-stats" id="selected-single-stats">
+              <div>Shield/Integrity: <span id="selected-stat-hp">1000/1000</span></div>
+              <div>Energy Rating: <span id="selected-stat-power">Provides 5 Power</span></div>
+              <div>Armor Profile: <span id="selected-stat-armor">Heavy Plating</span></div>
+              <div>Operational Status: <span id="selected-stat-status">Active</span></div>
+            </div>
+
+            <!-- Multi Select Grid -->
+            <div id="selection-multi-grid" style="display:none;">
+              <!-- Filled via JS -->
+            </div>
+          </div>
+        </div>
+        
+        <!-- Action Grid Panel -->
+        <div id="action-panel" class="glass-panel">
+          <span class="panel-label">Command Matrix</span>
+          <div id="action-grid">
+            <!-- Dynamic command buttons will be injected here -->
+          </div>
+          <!-- Global building queue indicator overlay -->
+          <div class="queue-container" id="queue-container">
+            <div class="queue-progress" id="queue-progress"></div>
+          </div>
+        </div>
+        
+      </div>
+      
+    </div>
+    
+    <!-- Welcome Modal -->
+    <div id="welcome-modal" class="modal-overlay">
+      <div class="modal-content glass-panel">
+        <div class="modal-title">Aether Horizon</div>
+        <div style="font-family: var(--font-cyber); font-size:12px; color: var(--color-cyan); margin-top:-15px; margin-bottom: 20px; letter-spacing:3px;">QUANTUM COLONY</div>
+        <div class="modal-body">
+          <p>Commander, your planetary expedition has established a landing site on <strong>Sector A-49</strong>. The sector contains dense deposits of <strong>Aether Crystals</strong>, but local sensors indicate extreme organic activity: four hostile <strong>Xeno Spires</strong> are generating waves of aggressive creatures.</p>
+          
+          <h3>Primary Directive</h3>
+          <ul>
+            <li><strong>Mine Crystals:</strong> Deploy Drones to gather Aether Crystals from glowing deposit nodes.</li>
+            <li><strong>Establish Colony:</strong> Build Solar Arrays for power, Assembly Plants to deploy security units, and Photon Turrets for automated defense.</li>
+            <li><strong>Eradicate Threat:</strong> Train Raider & Goliath battle-mechs to search and destroy the 4 Xeno Spires.</li>
+            <li><strong>Map Sensor Grid:</strong> Explore the entire map (100% Exploration) to complete colonization.</li>
+          </ul>
+
+          <div class="controls-grid">
+            <div class="control-item">
+              <strong>Selection</strong>
+              <span>Left-click units or Drag-select a box.</span>
+            </div>
+            <div class="control-item">
+              <strong>Movement / Target</strong>
+              <span>Right-click ground to move, crystals to mine, enemies to attack.</span>
+            </div>
+            <div class="control-item">
+              <strong>Camera Navigation</strong>
+              <span>WASD / Arrow Keys or scroll near screen edges. Wheel zooms.</span>
+            </div>
+            <div class="control-item">
+              <strong>Quick Keys</strong>
+              <span><b>A</b>: Attack Move, <b>S</b>: Stop, <b>H</b>: Hold.</span>
+            </div>
+          </div>
+        </div>
+        <button class="modal-btn" id="btn-start-game">INITIALIZE COLONIZATION</button>
+      </div>
+    </div>
+
+    <!-- Instructions Overlay Panel -->
+    <div id="instructions-modal" class="modal-overlay" style="display:none;">
+      <div class="modal-content glass-panel" style="width: 500px;">
+        <div class="modal-title" style="font-size:22px;">Mission Guide</div>
+        <div class="modal-body" style="font-size:13px;">
+          <h3>Colony Blueprint</h3>
+          <p><strong>Nexus Command (Base):</strong> Houses drones. Drop-off site for all harvested crystal cargos. Trains new Drones (Cost: 50 Crystals).</p>
+          <p><strong>Solar Array (Power):</strong> Generates +15 Power. Essential to sustain base activities. (Cost: 150 Crystals).</p>
+          <p><strong>Assembly Plant (Barracks):</strong> Allows training of military mechs. Requires 5 Power. Trains Raiders (Cost: 100) and Goliaths (Cost: 250).</p>
+          <p><strong>Photon Turret (Defense):</strong> Automatic plasma weapon. Fires arcs at hostile targets within its radius. Requires 3 Power. (Cost: 175).</p>
+          
+          <h3>Exploration and Fog of War</h3>
+          <p>Black regions are unexplored. Colored regions outside unit sight are under the Shroud of War (you see the landscape, but moving enemy units are hidden). Explore by sending scouts to clear the fog.</p>
+        </div>
+        <button class="modal-btn" id="btn-close-instructions">RETURN TO MISSION</button>
+      </div>
+    </div>
+
+    <!-- GameOver Modal -->
+    <div id="game-over-modal" class="modal-overlay" style="display:none;">
+      <div class="modal-content glass-panel">
+        <div class="modal-title" id="game-over-title">MISSION COMPLETED</div>
+        <div class="modal-body" style="text-align: center;">
+          <p id="game-over-message">You have established absolute control over Sector A-49.</p>
+          <div class="controls-grid" style="grid-template-columns: 1fr; gap: 8px; text-align: left; padding: 15px;">
+            <div>Time Elapsed: <span id="stat-time" style="color:var(--color-cyan);">00:00</span></div>
+            <div>Aether Gathered: <span id="stat-gathered" style="color:var(--color-cyan);">0</span></div>
+            <div>Spires Blasted: <span id="stat-spires" style="color:var(--color-cyan);">4/4</span></div>
+            <div>Final Exploration Score: <span id="stat-exploration" style="color:var(--color-cyan);">100%</span></div>
+          </div>
+        </div>
+        <button class="modal-btn" onclick="window.location.reload()">RE-DEPLOY FORCE</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // =========================================================================
+    // GAME CONSTANTS & CONFIGURATION
+    // =========================================================================
+    const MAP_SIZE = 3200; // 3200 x 3200 pixel map
+    const GRID_CELL_SIZE = 64; // Obstacle/Building collision grid
+    const GRID_SIZE = MAP_SIZE / GRID_CELL_SIZE; // 50x50 cells
+    const FOG_SCALE = 2; // Fog grid is 100x100 for smoother shadows
+    const FOG_CELL_SIZE = MAP_SIZE / (GRID_SIZE * FOG_SCALE); // 32x32 pixels
+    const FOG_GRID_SIZE = GRID_SIZE * FOG_SCALE; // 100
+
+    const TEAM_PLAYER = 1;
+    const TEAM_NEUTRAL = 0;
+    const TEAM_ALIEN = 2;
+
+    const ENTITY_UNIT = 'unit';
+    const ENTITY_BUILDING = 'building';
+    const ENTITY_RESOURCE = 'resource';
+    const ENTITY_DECORATION = 'decoration';
+
+    // Unit Profiles
+    const UNIT_TYPES = {
+      drone: {
+        name: 'Quantum Drone',
+        key: 'drone',
+        cost: 50,
+        hp: 65,
+        armor: 1,
+        speed: 2.0,
+        radius: 12,
+        attackDmg: 4,
+        attackRange: 35,
+        attackCooldown: 60, // frames
+        vision: 160,
+        description: 'Industrial worker. Gathers crystals and constructs base structures.',
+        icon: 'fa-robot'
+      },
+      raider: {
+        name: 'Raider Mech',
+        key: 'raider',
+        cost: 100,
+        hp: 120,
+        armor: 2,
+        speed: 2.6,
+        radius: 14,
+        attackDmg: 12,
+        attackRange: 130,
+        attackCooldown: 40,
+        vision: 220,
+        description: 'Light scouting mech armed with rapid-fire kinetic laser rifles.',
+        icon: 'fa-location-crosshairs'
+      },
+      goliath: {
+        name: 'Goliath Tank',
+        key: 'goliath',
+        cost: 250,
+        hp: 280,
+        armor: 5,
+        speed: 1.4,
+        radius: 18,
+        attackDmg: 32,
+        attackRange: 170,
+        attackCooldown: 85,
+        vision: 250,
+        description: 'Heavy armored biped. Devastating explosive shockwave weapon.',
+        icon: 'fa-shield-halved'
+      },
+      creep: {
+        name: 'Xeno Spiker',
+        key: 'creep',
+        cost: 0,
+        hp: 55,
+        armor: 0,
+        speed: 2.2,
+        radius: 10,
+        attackDmg: 8,
+        attackRange: 20,
+        attackCooldown: 45,
+        vision: 180,
+        description: 'Feral native organism. Aggressive defender of Xeno Spires.',
+        icon: 'fa-bug'
+      }
+    };
+
+    // Building Profiles
+    const BUILDING_TYPES = {
+      nexus: {
+        name: 'Nexus Command',
+        key: 'nexus',
+        cost: 400,
+        hp: 1200,
+        armor: 5,
+        radius: 40,
+        vision: 280,
+        powerGen: 5,
+        powerUse: 0,
+        size: 3, // 3x3 cells
+        description: 'HQ landing base. Dropping point for resource crystals. Trains Drones.',
+        icon: 'fa-city'
+      },
+      solar: {
+        name: 'Solar Array',
+        key: 'solar',
+        cost: 150,
+        hp: 450,
+        armor: 2,
+        radius: 26,
+        vision: 180,
+        powerGen: 15,
+        powerUse: 0,
+        size: 2, // 2x2 cells
+        description: 'Harnesses stellar energy to supply power grid to structures.',
+        icon: 'fa-solar-panel'
+      },
+      assembly: {
+        name: 'Assembly Plant',
+        key: 'assembly',
+        cost: 200,
+        hp: 800,
+        armor: 3,
+        radius: 34,
+        vision: 220,
+        powerGen: 0,
+        powerUse: 5,
+        size: 3, // 3x3 cells
+        description: 'High-tech foundry that constructs Raider and Goliath combat units.',
+        icon: 'fa-industry'
+      },
+      turret: {
+        name: 'Photon Turret',
+        key: 'turret',
+        cost: 175,
+        hp: 600,
+        armor: 4,
+        radius: 20,
+        vision: 240,
+        powerGen: 0,
+        powerUse: 3,
+        size: 1, // 1x1 cells
+        attackDmg: 24,
+        attackRange: 200,
+        attackCooldown: 50,
+        description: 'Stationary automated colony defense. Electrifies hostile trespassers.',
+        icon: 'fa-tower-broadcast'
+      },
+      spire: {
+        name: 'Xeno Spire',
+        key: 'spire',
+        cost: 0,
+        hp: 900,
+        armor: 2,
+        radius: 45,
+        vision: 240,
+        powerGen: 0,
+        powerUse: 0,
+        size: 3,
+        description: 'Alien hive nest emitting electromagnetic disruptions and spawning guards.',
+        icon: 'fa-egg'
+      }
+    };
+
+    // Decoration (Rocks, ruins, trees/plants)
+    const DECORATION_STYLES = [
+      { color: '#2c3540', shape: 'rock', size: 12 },
+      { color: '#1a2228', shape: 'rock-group', size: 22 },
+      { color: '#1e3328', shape: 'alien-foliage', size: 15 }
+    ];
+
+    // =========================================================================
+    // GAME ENGINE CORE & STATES
+    // =========================================================================
+    class GameEngine {
+      constructor() {
+        this.canvas = document.getElementById('game-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        // Window dimensions
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+
+        // Game state variables
+        this.crystals = 400;
+        this.powerMax = 0;
+        this.powerUsed = 0;
+        this.maxPopulation = 20; // soft cap, can be increased
+        this.totalGathered = 0;
+        this.spiresDestroyed = 0;
+        this.spiresTotal = 4;
+        this.explorationScore = 0;
+        this.gameTime = 0;
+        this.gameActive = false;
+        this.isGameOver = false;
+
+        // Camera viewport details
+        this.camera = {
+          x: 400, // Top left corner coordinate on map
+          y: 400,
+          zoom: 1.0,
+          targetZoom: 1.0,
+          speed: 15
+        };
+
+        // Command details
+        this.selectedEntities = [];
+        this.dragSelectStart = null;
+        this.isDragging = false;
+        
+        this.activePlacingBuilding = null; // building configuration currently being placed
+        this.mouseMapX = 0;
+        this.mouseMapY = 0;
+        this.mouseScreenX = 0;
+        this.mouseScreenY = 0;
+
+        // Sound indicator state
+        this.soundMuted = true;
+
+        // Collections
+        this.units = [];
+        this.buildings = [];
+        this.resources = [];
+        this.decorations = [];
+        this.projectiles = [];
+        this.particles = [];
+        this.floatingTexts = [];
+        
+        // Grids
+        this.collisionGrid = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(0));
+        // Fog of War: 0 = Unexplored, 1 = Explored but out-of-sight (Shroud), 2 = Visually revealed (Active)
+        this.fogGrid = Array(FOG_GRID_SIZE).fill(null).map(() => Array(FOG_GRID_SIZE).fill(0));
+        
+        // Key listener setup
+        this.keys = {};
+
+        // Unique Entity ID tracker
+        this.nextEntityId = 1;
+
+        // Bind events
+        this.initEvents();
+        
+        // Resize canvas initially
+        this.resize();
+      }
+
+      start() {
+        this.generateMap();
+        this.gameActive = true;
+        this.gameTime = 0;
+        
+        // Center camera initially near the player command center
+        const myNexus = this.buildings.find(b => b.team === TEAM_PLAYER && b.type === 'nexus');
+        if (myNexus) {
+          this.camera.x = myNexus.x - this.width / 2;
+          this.camera.y = myNexus.y - this.height / 2;
+          this.clampCamera();
+        }
+
+        // Set up the system updates
+        this.loop();
+
+        // Increment time every second
+        setInterval(() => {
+          if (this.gameActive && !this.isGameOver) {
+            this.gameTime++;
+            this.updateTimeDisplay();
+            this.spawnCreepsFromSpires();
+          }
+        }, 1000);
+      }
+
+      resize() {
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+      }
+
+      // =======================================================================
+      // MAP GENERATOR
+      // =======================================================================
+      generateMap() {
+        // Clear maps
+        this.collisionGrid = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(0));
+        this.fogGrid = Array(FOG_GRID_SIZE).fill(null).map(() => Array(FOG_GRID_SIZE).fill(0));
+        this.units = [];
+        this.buildings = [];
+        this.resources = [];
+        this.decorations = [];
+
+        // 1. Establish player start area (Bottom-Left: x: 500, y: 2700 roughly)
+        const playerStartX = 500;
+        const playerStartY = 2700;
+
+        // Place Nexus HQ
+        this.createBuilding('nexus', playerStartX, playerStartY, TEAM_PLAYER, true);
+        
+        // Spawn 3 starting Drones near Nexus
+        for (let i = 0; i < 3; i++) {
+          const uX = playerStartX + (Math.random() - 0.5) * 150;
+          const uY = playerStartY + 100 + (Math.random() - 0.5) * 100;
+          this.createUnit('drone', uX, uY, TEAM_PLAYER);
+        }
+
+        // Spawn starting crystal clusters near home base
+        this.spawnCrystalCluster(playerStartX - 200, playerStartY - 150, 4, 300);
+        this.spawnCrystalCluster(playerStartX + 200, playerStartY - 200, 3, 300);
+
+        // 2. Spawn 4 Hostile Alien Spires in other quadrants of the map
+        const spireLocations = [
+          { x: 2700, y: 500 },  // Top-Right
+          { x: 500, y: 500 },   // Top-Left
+          { x: 2700, y: 2700 }, // Bottom-Right
+          { x: 1600, y: 1600 }  // Center
+        ];
+
+        spireLocations.forEach((loc, index) => {
+          const spire = this.createBuilding('spire', loc.x, loc.y, TEAM_ALIEN, true);
+          
+          // Place resource fields near the nests to tempt the player
+          this.spawnCrystalCluster(loc.x + 200 * (index % 2 === 0 ? 1 : -1), loc.y + 150 * (index > 1 ? 1 : -1), 3, 400);
+
+          // Spawn defensive creep guards
+          for (let j = 0; j < 3; j++) {
+            const rx = loc.x + (Math.random() - 0.5) * 160;
+            const ry = loc.y + (Math.random() - 0.5) * 160;
+            this.createUnit('creep', rx, ry, TEAM_ALIEN);
+          }
+        });
+
+        // 3. Scatter neutral obstacles and extra crystal fields randomly across the map
+        // Random crystal nodes
+        for (let i = 0; i < 15; i++) {
+          const rx = 400 + Math.random() * (MAP_SIZE - 800);
+          const ry = 400 + Math.random() * (MAP_SIZE - 800);
+          
+          // Don't spawn too close to player or spires
+          let tooClose = false;
+          if (Math.hypot(rx - playerStartX, ry - playerStartY) < 500) tooClose = true;
+          spireLocations.forEach(loc => {
+            if (Math.hypot(rx - loc.x, ry - loc.y) < 400) tooClose = true;
+          });
+
+          if (!tooClose) {
+            this.spawnCrystalCluster(rx, ry, Math.floor(2 + Math.random() * 3), 400);
+          }
+        }
+
+        // Random rocks and foliage (Impassable terrain pieces)
+        for (let i = 0; i < 120; i++) {
+          const rx = Math.random() * MAP_SIZE;
+          const ry = Math.random() * MAP_SIZE;
+          
+          // Check proximity to key structures
+          let tooClose = false;
+          if (Math.hypot(rx - playerStartX, ry - playerStartY) < 300) tooClose = true;
+          spireLocations.forEach(loc => {
+            if (Math.hypot(rx - loc.x, ry - loc.y) < 250) tooClose = true;
+          });
+          
+          this.resources.forEach(res => {
+            if (Math.hypot(rx - res.x, ry - res.y) < 80) tooClose = true;
+          });
+
+          if (!tooClose) {
+            const style = DECORATION_STYLES[Math.floor(Math.random() * DECORATION_STYLES.length)];
+            this.decorations.push({
+              x: rx,
+              y: ry,
+              style: style,
+              radius: style.size
+            });
+
+            // Mark collision grid
+            const gX = Math.floor(rx / GRID_CELL_SIZE);
+            const gY = Math.floor(ry / GRID_CELL_SIZE);
+            if (gX >= 0 && gX < GRID_SIZE && gY >= 0 && gY < GRID_SIZE) {
+              this.collisionGrid[gY][gX] = 1; // blocked
+            }
+          }
+        }
+
+        this.updatePower();
+        this.updateStatsBar();
+      }
+
+      spawnCrystalCluster(centerX, centerY, count, valRange) {
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = Math.random() * 80;
+          const rx = centerX + Math.cos(angle) * dist;
+          const ry = centerY + Math.sin(angle) * dist;
+
+          // Align slightly to grid cells or keep float
+          this.resources.push({
+            id: this.nextEntityId++,
+            type: ENTITY_RESOURCE,
+            x: rx,
+            y: ry,
+            radius: 16,
+            crystalsRemaining: valRange + Math.floor(Math.random() * 200)
+          });
+        }
+      }
+
+      // =======================================================================
+      // ENTITY CREATION
+      // =======================================================================
+      createUnit(typeKey, x, y, team) {
+        const profile = UNIT_TYPES[typeKey];
+        if (!profile) return null;
+
+        const newUnit = {
+          id: this.nextEntityId++,
+          type: ENTITY_UNIT,
+          unitType: typeKey,
+          team: team,
+          name: profile.name,
+          
+          x: x,
+          y: y,
+          radius: profile.radius,
+          speed: profile.speed,
+          hp: profile.hp,
+          maxHp: profile.hp,
+          armor: profile.armor,
+          attackDmg: profile.attackDmg,
+          attackRange: profile.attackRange,
+          attackCooldown: profile.attackCooldown,
+          attackTimer: 0,
+          vision: profile.vision,
+
+          // Steering/Movement variables
+          vx: 0,
+          vy: 0,
+          targetX: null,
+          targetY: null,
+          path: [],
+          state: 'idle', // idle, moving, gathering, returnCargo, combat, attackMove
+          
+          // Combat targets
+          combatTarget: null,
+          
+          // Worker gather specific
+          gatherTarget: null,
+          cargo: 0,
+          cargoCapacity: 10,
+          cargoType: 'crystals',
+
+          // Highlight/selection states
+          isSelected: false,
+          
+          // Animation elements
+          angle: Math.random() * Math.PI * 2,
+          pulseTimer: 0
+        };
+
+        this.units.push(newUnit);
+        this.updatePopulation();
+        return newUnit;
+      }
+
+      createBuilding(typeKey, x, y, team, instant = false) {
+        const profile = BUILDING_TYPES[typeKey];
+        if (!profile) return null;
+
+        // Snap coordinates to grid cell center
+        const size = profile.size;
+        const gX = Math.floor(x / GRID_CELL_SIZE);
+        const gY = Math.floor(y / GRID_CELL_SIZE);
+        const snapX = (gX + size / 2) * GRID_CELL_SIZE;
+        const snapY = (gY + size / 2) * GRID_CELL_SIZE;
+
+        // Reserve collision cells
+        for (let dy = 0; dy < size; dy++) {
+          for (let dx = 0; dx < size; dx++) {
+            if (gY + dy < GRID_SIZE && gX + dx < GRID_SIZE) {
+              this.collisionGrid[gY + dy][gX + dx] = 2; // occupied by building
+            }
+          }
+        }
+
+        const newBuilding = {
+          id: this.nextEntityId++,
+          type: ENTITY_BUILDING,
+          buildingType: typeKey,
+          team: team,
+          name: profile.name,
+          
+          x: snapX,
+          y: snapY,
+          radius: profile.radius,
+          hp: instant ? profile.hp : 50, // construction starts low
+          maxHp: profile.hp,
+          armor: profile.armor,
+          vision: profile.vision,
+          powerGen: profile.powerGen,
+          powerUse: profile.powerUse,
+          size: size,
+          gridX: gX,
+          gridY: gY,
+          
+          isUnderConstruction: !instant,
+          constructionProgress: instant ? 1.0 : 0.0,
+          
+          // Spawning / Training queue
+          queue: [],
+          queueProgress: 0,
+          
+          // Defense turret details
+          attackDmg: profile.attackDmg || 0,
+          attackRange: profile.attackRange || 0,
+          attackCooldown: profile.attackCooldown || 0,
+          attackTimer: 0,
+          combatTarget: null,
+
+          isSelected: false
+        };
+
+        this.buildings.push(newBuilding);
+        
+        if (instant) {
+          this.updatePower();
+        }
+
+        return newBuilding;
+      }
+
+      // =======================================================================
+      // LOGIC ENGINE & LOOP
+      // =======================================================================
+      loop() {
+        if (!this.gameActive) return;
+
+        this.update();
+        this.render();
+
+        requestAnimationFrame(() => this.loop());
+      }
+
+      update() {
+        // Update particles
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const p = this.particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.life--;
+          if (p.life <= 0) {
+            this.particles.splice(i, 1);
+          }
+        }
+
+        // Update floating texts
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+          const ft = this.floatingTexts[i];
+          ft.y -= ft.speed;
+          ft.life--;
+          if (ft.life <= 0) {
+            this.floatingTexts.splice(i, 1);
+          }
+        }
+
+        // Update projectiles
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+          const p = this.projectiles[i];
+          
+          // Projectile tracking target
+          let target = this.findEntityById(p.targetId);
+          if (!target || target.hp <= 0) {
+            // Target is dead, just explode at last position
+            this.createExplosionParticles(p.x, p.y, '#00f0ff', 5);
+            this.projectiles.splice(i, 1);
+            continue;
+          }
+
+          const dx = target.x - p.x;
+          const dy = target.y - p.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist < 15) {
+            // Hit! Apply damage
+            this.damageEntity(target, p.damage, p.sourceId);
+            this.createExplosionParticles(p.x, p.y, p.color, 8);
+            this.projectiles.splice(i, 1);
+          } else {
+            // Move toward target
+            p.x += (dx / dist) * p.speed;
+            p.y += (dy / dist) * p.speed;
+          }
+        }
+
+        // Update units (physics, state machine, steering)
+        this.units.forEach(unit => {
+          this.updateUnitState(unit);
+          this.updateUnitPhysics(unit);
+        });
+
+        // Update structures (construction queue, defense automated actions)
+        this.buildings.forEach(b => {
+          this.updateBuildingState(b);
+        });
+
+        // Handle camera smooth pans
+        this.updateCamera();
+
+        // Update Fog of War grid (throttled for performance, e.g. every 10 frames)
+        if (Math.floor(Date.now() / 16) % 10 === 0) {
+          this.updateFogOfWar();
+        }
+
+        // Periodically refresh HUD details
+        if (Math.floor(Date.now() / 16) % 15 === 0) {
+          this.syncHUDSelection();
+          this.updateStatsBar();
+        }
+      }
+
+      findEntityById(id) {
+        let e = this.units.find(u => u.id === id);
+        if (e) return e;
+        e = this.buildings.find(b => b.id === id);
+        if (e) return e;
+        return null;
+      }
+
+      // =======================================================================
+      // PATHFINDING (A* GRID) & FLOCKING COLLISION AVOIDANCE
+      // =======================================================================
+      // Find path on our 50x50 grid
+      findPath(startX, startY, endX, endY) {
+        const startGridX = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(startX / GRID_CELL_SIZE)));
+        const startGridY = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(startY / GRID_CELL_SIZE)));
+        const endGridX = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(endX / GRID_CELL_SIZE)));
+        const endGridY = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(endY / GRID_CELL_SIZE)));
+
+        if (startGridX === endGridX && startGridY === endGridY) {
+          return [[endX, endY]];
+        }
+
+        // If target is blocked, find closest walkable cell to target
+        let adjustedEndX = endGridX;
+        let adjustedEndY = endGridY;
+        if (this.collisionGrid[adjustedEndY][adjustedEndX] > 0) {
+          let found = false;
+          let bestDist = Infinity;
+          for (let r = 1; r < 4 && !found; r++) {
+            for (let dy = -r; dy <= r; dy++) {
+              for (let dx = -r; dx <= r; dx++) {
+                const ny = endGridY + dy;
+                const nx = endGridX + dx;
+                if (ny >= 0 && ny < GRID_SIZE && nx >= 0 && nx < GRID_SIZE) {
+                  if (this.collisionGrid[ny][nx] === 0) {
+                    const dist = Math.hypot(nx - startGridX, ny - startGridY);
+                    if (dist < bestDist) {
+                      bestDist = dist;
+                      adjustedEndX = nx;
+                      adjustedEndY = ny;
+                      found = true;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // A* Algorithm
+        const openList = [];
+        const closedSet = new Set();
+        
+        const startNode = {
+          x: startGridX,
+          y: startGridY,
+          g: 0,
+          h: Math.abs(adjustedEndX - startGridX) + Math.abs(adjustedEndY - startGridY),
+          f: 0,
+          parent: null
+        };
+        startNode.f = startNode.g + startNode.h;
+        openList.push(startNode);
+
+        let iterations = 0;
+        const maxIterations = 600; // safety ceiling
+
+        while (openList.length > 0 && iterations++ < maxIterations) {
+          // Sort to get node with lowest F score
+          openList.sort((a, b) => a.f - b.f);
+          const current = openList.shift();
+          
+          const currentKey = `${current.x},${current.y}`;
+          closedSet.add(currentKey);
+
+          if (current.x === adjustedEndX && current.y === adjustedEndY) {
+            // Reconstruct path
+            const path = [];
+            let curr = current;
+            while (curr !== null) {
+              // Convert grid cells back to map coordinates (cell centers)
+              path.push([
+                curr.x * GRID_CELL_SIZE + GRID_CELL_SIZE / 2,
+                curr.y * GRID_CELL_SIZE + GRID_CELL_SIZE / 2
+              ]);
+              curr = curr.parent;
+            }
+            path.reverse();
+            // Append final precise target point
+            path[path.length - 1] = [endX, endY];
+            return path;
+          }
+
+          // Neighbors (8 directions)
+          const directions = [
+            [0, -1], [0, 1], [-1, 0], [1, 0],
+            [-1, -1], [1, -1], [-1, 1], [1, 1]
+          ];
+
+          for (let i = 0; i < directions.length; i++) {
+            const dx = directions[i][0];
+            const dy = directions[i][1];
+            const nx = current.x + dx;
+            const ny = current.y + dy;
+
+            if (nx < 0 || nx >= GRID_SIZE || ny < 0 || ny >= GRID_SIZE) continue;
+            
+            // Check collision grid (0 = walkable, >0 is blocked)
+            if (this.collisionGrid[ny][nx] > 0) continue;
+
+            // Disallow diagonal cutting corner obstacles
+            if (Math.abs(dx) === 1 && Math.abs(dy) === 1) {
+              if (this.collisionGrid[current.y][nx] > 0 || this.collisionGrid[ny][current.x] > 0) {
+                continue;
+              }
+            }
+
+            const neighborKey = `${nx},${ny}`;
+            if (closedSet.has(neighborKey)) continue;
+
+            const gCost = current.g + (Math.abs(dx) === 1 && Math.abs(dy) === 1 ? 1.414 : 1.0);
+            
+            // Check if already in openList
+            let existing = openList.find(n => n.x === nx && n.y === ny);
+
+            if (!existing) {
+              const node = {
+                x: nx,
+                y: ny,
+                g: gCost,
+                h: Math.abs(adjustedEndX - nx) + Math.abs(adjustedEndY - ny),
+                f: 0,
+                parent: current
+              };
+              node.f = node.g + node.h;
+              openList.push(node);
+            } else if (gCost < existing.g) {
+              existing.g = gCost;
+              existing.f = existing.g + existing.h;
+              existing.parent = current;
+            }
+          }
+        }
+
+        // Fallback: if blocked or no route, move directly towards point
+        return [[endX, endY]];
+      }
+
+      // =======================================================================
+      // UNIT STATES & FSM
+      // =======================================================================
+      updateUnitState(unit) {
+        if (unit.hp <= 0) return;
+
+        // Manage Cooldowns
+        if (unit.attackTimer > 0) unit.attackTimer--;
+
+        // State Machine logic
+        switch (unit.state) {
+          case 'idle':
+            // Idle units automatically seek targets if they are military (Raiders/Goliaths/Creeps)
+            if (unit.team === TEAM_PLAYER && unit.unitType !== 'drone') {
+              this.autoAcquireCombatTarget(unit, unit.vision);
+            } else if (unit.team === TEAM_ALIEN) {
+              this.autoAcquireCombatTarget(unit, unit.vision);
+            }
+            break;
+
+          case 'moving':
+            if (unit.targetX !== null) {
+              const dist = Math.hypot(unit.targetX - unit.x, unit.targetY - unit.y);
+              if (dist < unit.radius + 15) {
+                // Arrived
+                if (unit.path && unit.path.length > 0) {
+                  const nextWaypoint = unit.path.shift();
+                  unit.targetX = nextWaypoint[0];
+                  unit.targetY = nextWaypoint[1];
+                } else {
+                  unit.targetX = null;
+                  unit.targetY = null;
+                  unit.state = 'idle';
+                }
+              }
+            }
+            break;
+
+          case 'attackMove':
+            // Move, but scanning constantly for enemies
+            if (this.autoAcquireCombatTarget(unit, unit.vision)) {
+              unit.state = 'combat';
+              break;
+            }
+
+            if (unit.targetX !== null) {
+              const dist = Math.hypot(unit.targetX - unit.x, unit.targetY - unit.y);
+              if (dist < unit.radius + 10) {
+                if (unit.path && unit.path.length > 0) {
+                  const nextWaypoint = unit.path.shift();
+                  unit.targetX = nextWaypoint[0];
+                  unit.targetY = nextWaypoint[1];
+                } else {
+                  unit.targetX = null;
+                  unit.targetY = null;
+                  unit.state = 'idle';
+                }
+              }
+            }
+            break;
+
+          case 'gathering':
+            // Worker Drone action loop
+            if (!unit.gatherTarget) {
+              unit.state = 'idle';
+              break;
+            }
+
+            // Ensure gather target still exists
+            const crystal = this.resources.find(r => r.id === unit.gatherTarget.id);
+            if (!crystal || crystal.crystalsRemaining <= 0) {
+              // Node depleted, find next closest crystal node
+              const nextNode = this.findClosestCrystalNode(unit.x, unit.y);
+              if (nextNode) {
+                this.orderDroneToGather(unit, nextNode, false);
+              } else {
+                unit.gatherTarget = null;
+                unit.state = 'idle';
+              }
+              break;
+            }
+
+            const distToCrystal = Math.hypot(crystal.x - unit.x, crystal.y - unit.y);
+            if (distToCrystal <= unit.attackRange + 10) {
+              // In mining range! Stop physics moving
+              unit.vx = 0;
+              unit.vy = 0;
+
+              // Mine resources
+              if (unit.attackTimer <= 0) {
+                unit.attackTimer = 80; // Gathering ticks take about 1.3 seconds
+                
+                // Spawn laser sparks
+                this.createHarvestingEffect(unit.x, unit.y, crystal.x, crystal.y);
+                
+                // Deduct resource
+                const mineAmount = Math.min(unit.cargoCapacity - unit.cargo, crystal.crystalsRemaining);
+                crystal.crystalsRemaining -= mineAmount;
+                unit.cargo += mineAmount;
+                
+                if (crystal.crystalsRemaining <= 0) {
+                  // Depleted particle burst
+                  this.createExplosionParticles(crystal.x, crystal.y, '#00f0ff', 15);
+                  // Remove resource
+                  const idx = this.resources.indexOf(crystal);
+                  if (idx !== -1) this.resources.splice(idx, 1);
+                }
+
+                if (unit.cargo >= unit.cargoCapacity) {
+                  // Full load, go return cargo to Command Center
+                  const commandCenter = this.findClosestBuilding(unit.x, unit.y, 'nexus', TEAM_PLAYER);
+                  if (commandCenter) {
+                    unit.state = 'returnCargo';
+                    const path = this.findPath(unit.x, unit.y, commandCenter.x, commandCenter.y);
+                    this.followPath(unit, path);
+                  } else {
+                    this.showToast('No Nexus Command center to return crystals!', 'warn');
+                    unit.state = 'idle';
+                  }
+                }
+              }
+            } else {
+              // Move towards crystal
+              unit.targetX = crystal.x;
+              unit.targetY = crystal.y;
+            }
+            break;
+
+          case 'returnCargo':
+            // Worker Drone returning resources to Command Center
+            const commandCenter = this.findClosestBuilding(unit.x, unit.y, 'nexus', TEAM_PLAYER);
+            if (!commandCenter) {
+              this.showToast('Nexus Command Center missing!', 'warn');
+              unit.state = 'idle';
+              break;
+            }
+
+            const distToNexus = Math.hypot(commandCenter.x - unit.x, commandCenter.y - unit.y);
+            if (distToNexus <= commandCenter.radius + unit.radius + 15) {
+              // Cargo deposited!
+              this.crystals += unit.cargo;
+              this.totalGathered += unit.cargo;
+              
+              // Spawn floating text showing resource gains
+              this.spawnFloatingText(`+${unit.cargo}`, unit.x, unit.y - 15, '#ffdd00');
+
+              unit.cargo = 0;
+              this.updateStatsBar();
+
+              // Automatically head back to previous gathering target if valid
+              if (unit.gatherTarget) {
+                const cry = this.resources.find(r => r.id === unit.gatherTarget.id);
+                if (cry && cry.crystalsRemaining > 0) {
+                  this.orderDroneToGather(unit, cry, true);
+                } else {
+                  // Search new one
+                  const nextNode = this.findClosestCrystalNode(unit.x, unit.y);
+                  if (nextNode) {
+                    this.orderDroneToGather(unit, nextNode, true);
+                  } else {
+                    unit.state = 'idle';
+                  }
+                }
+              } else {
+                unit.state = 'idle';
+              }
+            }
+            break;
+
+          case 'combat':
+            // Unit is engaged in combat
+            if (!unit.combatTarget) {
+              unit.state = 'idle';
+              break;
+            }
+
+            const targetEnt = this.findEntityById(unit.combatTarget.id);
+            if (!targetEnt || targetEnt.hp <= 0) {
+              unit.combatTarget = null;
+              unit.state = 'idle';
+              break;
+            }
+
+            // Check distance
+            const distToEnemy = Math.hypot(targetEnt.x - unit.x, targetEnt.y - unit.y);
+            const range = unit.attackRange;
+
+            if (distToEnemy <= range) {
+              // Stop moving, fire weapon
+              unit.vx = 0;
+              unit.vy = 0;
+              unit.targetX = null;
+              unit.targetY = null;
+              unit.path = [];
+
+              // Look at target
+              unit.angle = Math.atan2(targetEnt.y - unit.y, targetEnt.x - unit.x);
+
+              if (unit.attackTimer <= 0) {
+                unit.attackTimer = unit.attackCooldown;
+                this.fireWeapon(unit, targetEnt);
+              }
+            } else {
+              // Move towards enemy target
+              // Periodically recalculate path towards moving enemy (throttled)
+              if (Math.floor(Date.now() / 16) % 30 === 0) {
+                const path = this.findPath(unit.x, unit.y, targetEnt.x, targetEnt.y);
+                this.followPath(unit, path);
+              }
+            }
+            break;
+        }
+      }
+
+      autoAcquireCombatTarget(unit, range) {
+        let bestTarget = null;
+        let bestDist = range;
+
+        // Scan for hostiles
+        const possibleTargets = [...this.units, ...this.buildings];
+        possibleTargets.forEach(t => {
+          if (t.hp > 0 && t.team !== TEAM_NEUTRAL && t.team !== unit.team) {
+            const d = Math.hypot(t.x - unit.x, t.y - unit.y);
+            if (d < bestDist) {
+              bestDist = d;
+              bestTarget = t;
+            }
+          }
+        });
+
+        if (bestTarget) {
+          unit.combatTarget = { id: bestTarget.id, type: bestTarget.type };
+          unit.state = 'combat';
+          return true;
+        }
+        return false;
+      }
+
+      orderDroneToGather(drone, crystalNode, bypassPath = false) {
+        drone.gatherTarget = { id: crystalNode.id };
+        drone.state = 'gathering';
+        drone.combatTarget = null;
+
+        if (!bypassPath) {
+          const path = this.findPath(drone.x, drone.y, crystalNode.x, crystalNode.y);
+          this.followPath(drone, path);
+        } else {
+          drone.targetX = crystalNode.x;
+          drone.targetY = crystalNode.y;
+          drone.path = [];
+        }
+      }
+
+      fireWeapon(attacker, defender) {
+        // Laser color based on attacker type
+        let laserColor = '#00f0ff';
+        let speed = 8;
+        if (attacker.unitType === 'raider') laserColor = '#ff3344';
+        if (attacker.unitType === 'goliath') {
+          laserColor = '#ffaa00';
+          speed = 10;
+        }
+        if (attacker.unitType === 'creep') laserColor = '#cc00ff';
+
+        // Spawn projectile
+        this.projectiles.push({
+          x: attacker.x,
+          y: attacker.y,
+          targetId: defender.id,
+          sourceId: attacker.id,
+          speed: speed,
+          damage: attacker.attackDmg,
+          color: laserColor
+        });
+      }
+
+      damageEntity(entity, damage, attackerId) {
+        if (entity.hp <= 0) return;
+
+        // Factor in Armor
+        const actualDmg = Math.max(1, damage - entity.armor);
+        entity.hp -= actualDmg;
+
+        // Draw floating damage numbers
+        this.spawnFloatingText(`-${actualDmg}`, entity.x + (Math.random() - 0.5) * 20, entity.y - 15, '#ff3344');
+
+        // Check death
+        if (entity.hp <= 0) {
+          entity.hp = 0;
+          this.handleEntityDeath(entity);
+        } else {
+          // If attacked entity is idle or just gathering, make it retaliate/defend itself!
+          if (entity.type === ENTITY_UNIT && (entity.state === 'idle' || entity.state === 'gathering' || entity.state === 'returnCargo')) {
+            const attacker = this.findEntityById(attackerId);
+            if (attacker && attacker.team !== entity.team) {
+              entity.combatTarget = { id: attacker.id, type: attacker.type };
+              entity.state = 'combat';
+            }
+          }
+        }
+      }
+
+      handleEntityDeath(entity) {
+        this.createExplosionParticles(entity.x, entity.y, entity.team === TEAM_ALIEN ? '#cc00ff' : '#00f0ff', 35);
+        this.screenShake = 12;
+
+        if (entity.type === ENTITY_UNIT) {
+          // Remove from collection
+          const idx = this.units.indexOf(entity);
+          if (idx !== -1) this.units.splice(idx, 1);
+          
+          // Deselect
+          const sIdx = this.selectedEntities.indexOf(entity);
+          if (sIdx !== -1) this.selectedEntities.splice(sIdx, 1);
+
+          this.updatePopulation();
+        } else if (entity.type === ENTITY_BUILDING) {
+          // Clear collision cells
+          const size = entity.size;
+          for (let dy = 0; dy < size; dy++) {
+            for (let dx = 0; dx < size; dx++) {
+              if (entity.gridY + dy < GRID_SIZE && entity.gridX + dx < GRID_SIZE) {
+                this.collisionGrid[entity.gridY + dy][entity.gridX + dx] = 0; // walkable again
+              }
+            }
+          }
+
+          // Remove building from list
+          const idx = this.buildings.indexOf(entity);
+          if (idx !== -1) this.buildings.splice(idx, 1);
+
+          // Deselect
+          const sIdx = this.selectedEntities.indexOf(entity);
+          if (sIdx !== -1) this.selectedEntities.splice(sIdx, 1);
+
+          // If Alien Spire dies
+          if (entity.buildingType === 'spire') {
+            this.spiresDestroyed++;
+            this.showToast('Xeno Spire Obliterated!', 'success');
+            this.crystals += 300; // Reward
+            this.spawnFloatingText(`+300 Credits`, entity.x, entity.y - 25, '#ffdd00');
+            
+            // Check win condition
+            this.checkGameConditions();
+          }
+
+          // Recalculate base variables
+          this.updatePower();
+        }
+
+        this.syncHUDSelection();
+      }
+
+      // =======================================================================
+      // PHYSICAL ENGINE & MOVEMENT STEERING
+      // =======================================================================
+      updateUnitPhysics(unit) {
+        if (unit.hp <= 0) return;
+
+        // If unit has target coordinates, calculate velocity towards it
+        if (unit.targetX !== null) {
+          const dx = unit.targetX - unit.x;
+          const dy = unit.targetY - unit.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist > 5) {
+            unit.vx = (dx / dist) * unit.speed;
+            unit.vy = (dy / dist) * unit.speed;
+            
+            // Face moving direction
+            unit.angle = Math.atan2(dy, dx);
+          } else {
+            unit.vx = 0;
+            unit.vy = 0;
+          }
+        } else {
+          // Friction deceleration
+          unit.vx *= 0.8;
+          unit.vy *= 0.8;
+          if (Math.hypot(unit.vx, unit.vy) < 0.05) {
+            unit.vx = 0;
+            unit.vy = 0;
+          }
+        }
+
+        // Apply Flocking Forces (Separation)
+        // Helps units stay spread out and look like an organic squad rather than stacking
+        let forceSepX = 0;
+        let forceSepY = 0;
+        let countSep = 0;
+        
+        this.units.forEach(other => {
+          if (other.id === unit.id) return;
+          
+          const d = Math.hypot(other.x - unit.x, other.y - unit.y);
+          const minSeparationDist = (unit.radius + other.radius) * 1.1;
+
+          if (d < minSeparationDist && d > 0) {
+            const pushDirX = unit.x - other.x;
+            const pushDirY = unit.y - other.y;
+            const pushDist = minSeparationDist - d;
+            
+            // Strong push away if overlapping
+            forceSepX += (pushDirX / d) * pushDist * 0.45;
+            forceSepY += (pushDirY / d) * pushDist * 0.45;
+            countSep++;
+          }
+        });
+
+        // Push away from stationary buildings
+        this.buildings.forEach(b => {
+          const d = Math.hypot(b.x - unit.x, b.y - unit.y);
+          const minSep = b.radius + unit.radius + 5;
+          if (d < minSep) {
+            const pushX = unit.x - b.x;
+            const pushY = unit.y - b.y;
+            const pushForce = minSep - d;
+            forceSepX += (pushX / d) * pushForce * 0.8;
+            forceSepY += (pushY / d) * pushForce * 0.8;
+            countSep++;
+          }
+        });
+
+        if (countSep > 0) {
+          unit.vx += forceSepX;
+          unit.vy += forceSepY;
+        }
+
+        // Move unit
+        unit.x += unit.vx;
+        unit.y += unit.vy;
+
+        // Map boundaries clamp
+        unit.x = Math.max(unit.radius + 10, Math.min(MAP_SIZE - unit.radius - 10, unit.x));
+        unit.y = Math.max(unit.radius + 10, Math.min(MAP_SIZE - unit.radius - 10, unit.y));
+
+        // Spawn movement particles (sparks/dust behind mechs)
+        if (Math.hypot(unit.vx, unit.vy) > 0.5 && Math.random() < 0.08) {
+          const backX = unit.x - Math.cos(unit.angle) * unit.radius;
+          const backY = unit.y - Math.sin(unit.angle) * unit.radius;
+          this.particles.push({
+            x: backX,
+            y: backY,
+            vx: (Math.random() - 0.5) * 0.4,
+            vy: (Math.random() - 0.5) * 0.4,
+            life: 20 + Math.random() * 15,
+            color: 'rgba(255, 255, 255, 0.15)',
+            radius: 2 + Math.random() * 2
+          });
+        }
+      }
+
+      followPath(unit, path) {
+        if (!path || path.length === 0) return;
+        unit.path = path;
+        const firstPoint = unit.path.shift();
+        unit.targetX = firstPoint[0];
+        unit.targetY = firstPoint[1];
+      }
+
+      // =======================================================================
+      // BUILDINGS & TRAINING QUEUE
+      // =======================================================================
+      updateBuildingState(b) {
+        // Handle automated construction progress
+        if (b.isUnderConstruction) {
+          b.constructionProgress += 0.002; // standard speed
+          b.hp = Math.floor(b.maxHp * b.constructionProgress);
+          
+          if (b.constructionProgress >= 1.0) {
+            b.constructionProgress = 1.0;
+            b.hp = b.maxHp;
+            b.isUnderConstruction = false;
+            this.showToast(`${b.name} active and operational.`, 'success');
+            
+            // Sparks
+            this.createExplosionParticles(b.x, b.y, '#00f0ff', 25);
+            this.updatePower();
+          }
+          return; // Under-construction buildings don't train or fire
+        }
+
+        // Handle automated attack turret reload
+        if (b.attackTimer > 0) b.attackTimer--;
+
+        // automated attack logic for defensive turrets
+        if (b.attackRange > 0) {
+          if (b.combatTarget) {
+            const target = this.findEntityById(b.combatTarget.id);
+            if (!target || target.hp <= 0 || Math.hypot(target.x - b.x, target.y - b.y) > b.attackRange) {
+              b.combatTarget = null;
+            } else {
+              // Turret attacks
+              if (b.attackTimer <= 0) {
+                b.attackTimer = b.attackCooldown;
+                
+                // Shoot projectile (Photon beam looks like electric arcs!)
+                this.projectiles.push({
+                  x: b.x,
+                  y: b.y,
+                  targetId: target.id,
+                  sourceId: b.id,
+                  speed: 12,
+                  damage: b.attackDmg,
+                  color: '#00f0ff'
+                });
+              }
+            }
+          } else {
+            // Find target in range
+            let bestTarget = null;
+            let bestDist = b.attackRange;
+            this.units.forEach(u => {
+              if (u.team === TEAM_ALIEN && u.hp > 0) {
+                const dist = Math.hypot(u.x - b.x, u.y - b.y);
+                if (dist < bestDist) {
+                  bestDist = dist;
+                  bestTarget = u;
+                }
+              }
+            });
+
+            if (bestTarget) {
+              b.combatTarget = { id: bestTarget.id, type: bestTarget.type };
+            }
+          }
+        }
+
+        // Handle Training Queue
+        if (b.queue.length > 0) {
+          b.queueProgress += 0.005; // ~3.3 seconds per train
+          
+          if (b.queueProgress >= 1.0) {
+            // Deploy unit!
+            const unitKey = b.queue.shift();
+            b.queueProgress = 0;
+
+            // Spawn slightly offset from building center
+            const spawnX = b.x + (b.size * GRID_CELL_SIZE) / 2 + 10;
+            const spawnY = b.y + (b.size * GRID_CELL_SIZE) / 2 + 10;
+            
+            const newUnit = this.createUnit(unitKey, spawnX, spawnY, b.team);
+            if (newUnit) {
+              // Give unit simple rally move command slightly away
+              const rallyX = spawnX + Math.random() * 100;
+              const rallyY = spawnY + Math.random() * 100;
+              const path = this.findPath(newUnit.x, newUnit.y, rallyX, rallyY);
+              this.followPath(newUnit, path);
+              newUnit.state = 'moving';
+            }
+
+            this.showToast(`${UNIT_TYPES[unitKey].name} Constructed.`, 'success');
+          }
+        }
+      }
+
+      spawnCreepsFromSpires() {
+        this.buildings.forEach(b => {
+          if (b.buildingType === 'spire' && b.hp > 0) {
+            // Chance to spawn insect guards (creep) up to a local cap
+            const guards = this.units.filter(u => u.unitType === 'creep' && Math.hypot(u.x - b.x, u.y - b.y) < 400);
+            if (guards.length < 5 && Math.random() < 0.12) {
+              const theta = Math.random() * Math.PI * 2;
+              const spawnX = b.x + Math.cos(theta) * 100;
+              const spawnY = b.y + Math.sin(theta) * 100;
+              
+              const creep = this.createUnit('creep', spawnX, spawnY, TEAM_ALIEN);
+              
+              // Idle creep wanders near base
+              if (creep) {
+                const wanderAngle = Math.random() * Math.PI * 2;
+                const wx = spawnX + Math.cos(wanderAngle) * 50;
+                const wy = spawnY + Math.sin(wanderAngle) * 50;
+                const p = this.findPath(creep.x, creep.y, wx, wy);
+                this.followPath(creep, p);
+                creep.state = 'moving';
+              }
+            }
+          }
+        });
+      }
+
+      // =======================================================================
+      // FOG OF WAR ENGINE
+      // =======================================================================
+      updateFogOfWar() {
+        // Reset current active visibility grid
+        // We set current values of '2' (Active sight) back to '1' (Shroud / Explored)
+        for (let y = 0; y < FOG_GRID_SIZE; y++) {
+          for (let x = 0; x < FOG_GRID_SIZE; x++) {
+            if (this.fogGrid[y][x] === 2) {
+              this.fogGrid[y][x] = 1;
+            }
+          }
+        }
+
+        // Mark active sight from Units and Buildings owned by PLAYER
+        const playerEntities = [
+          ...this.units.filter(u => u.team === TEAM_PLAYER),
+          ...this.buildings.filter(b => b.team === TEAM_PLAYER)
+        ];
+
+        playerEntities.forEach(ent => {
+          const visDist = ent.vision;
+          const visGridDist = Math.ceil(visDist / FOG_CELL_SIZE);
+          
+          const centerX = Math.floor(ent.x / FOG_CELL_SIZE);
+          const centerY = Math.floor(ent.y / FOG_CELL_SIZE);
+
+          // Apply vision radius circular stamp
+          for (let dy = -visGridDist; dy <= visGridDist; dy++) {
+            for (let dx = -visGridDist; dx <= visGridDist; dx++) {
+              if (dx*dx + dy*dy <= visGridDist*visGridDist) {
+                const fx = centerX + dx;
+                const fy = centerY + dy;
+
+                if (fx >= 0 && fx < FOG_GRID_SIZE && fy >= 0 && fy < FOG_GRID_SIZE) {
+                  this.fogGrid[fy][fx] = 2; // Active Visibility
+                }
+              }
+            }
+          }
+        });
+
+        // Recalculate explored percentage
+        let exploredCount = 0;
+        for (let y = 0; y < FOG_GRID_SIZE; y++) {
+          for (let x = 0; x < FOG_GRID_SIZE; x++) {
+            if (this.fogGrid[y][x] > 0) {
+              exploredCount++;
+            }
+          }
+        }
+        this.explorationScore = Math.floor((exploredCount / (FOG_GRID_SIZE * FOG_GRID_SIZE)) * 100);
+
+        this.checkGameConditions();
+      }
+
+      checkGameConditions() {
+        if (this.isGameOver) return;
+
+        // Check Lose: Nexus command destroyed and no workers/buildings remaining
+        const playerNexus = this.buildings.find(b => b.team === TEAM_PLAYER && b.buildingType === 'nexus');
+        const playerDrones = this.units.filter(u => u.team === TEAM_PLAYER && u.unitType === 'drone');
+        if (!playerNexus && playerDrones.length === 0) {
+          this.endGame(false);
+          return;
+        }
+
+        // Check Win: 4 Spires destroyed AND 100% of the map explored!
+        if (this.spiresDestroyed >= this.spiresTotal && this.explorationScore >= 100) {
+          this.endGame(true);
+        }
+      }
+
+      endGame(won) {
+        this.isGameOver = true;
+        this.gameActive = false;
+        
+        const modal = document.getElementById('game-over-modal');
+        const title = document.getElementById('game-over-title');
+        const message = document.getElementById('game-over-message');
+        
+        document.getElementById('stat-time').innerText = this.formatTime(this.gameTime);
+        document.getElementById('stat-gathered').innerText = this.totalGathered;
+        document.getElementById('stat-spires').innerText = `${this.spiresDestroyed}/${this.spiresTotal}`;
+        document.getElementById('stat-exploration').innerText = `${this.explorationScore}%`;
+
+        if (won) {
+          title.innerText = 'MISSION COMPLETED';
+          title.style.color = 'var(--color-green)';
+          title.style.textShadow = '0 0 12px var(--color-green)';
+          message.innerHTML = 'Outstanding leadership, Commander! Sector A-49 is fully secured and explored.<br>The colony is safe from alien infestation.';
+        } else {
+          title.innerText = 'MISSION FAILED';
+          title.style.color = 'var(--color-red)';
+          title.style.textShadow = '0 0 12px var(--color-red)';
+          message.innerHTML = 'Colony structures collapsed. The alien threat overwhelmed your landing forces.';
+        }
+
+        modal.style.display = 'flex';
+      }
+
+      // =======================================================================
+      // CAMERA NAVIGATION CONTROLLER
+      // =======================================================================
+      updateCamera() {
+        // Move camera based on WASD or keyboard arrows
+        let camMoveSpeed = this.camera.speed;
+        if (this.keys['KeyW'] || this.keys['ArrowUp']) this.camera.y -= camMoveSpeed;
+        if (this.keys['KeyS'] || this.keys['ArrowDown']) this.camera.y += camMoveSpeed;
+        if (this.keys['KeyA'] || this.keys['ArrowLeft']) this.camera.x -= camMoveSpeed;
+        if (this.keys['KeyD'] || this.keys['ArrowRight']) this.camera.x += camMoveSpeed;
+
+        // Move camera based on mouse screen edge proximity
+        if (this.mouseScreenX >= 0 && this.mouseScreenY >= 0 && this.mouseScreenX <= this.width && this.mouseScreenY <= this.height) {
+          const edgeThreshold = 25;
+          if (this.mouseScreenX < edgeThreshold) this.camera.x -= camMoveSpeed;
+          if (this.mouseScreenX > this.width - edgeThreshold) this.camera.x += camMoveSpeed;
+          if (this.mouseScreenY < edgeThreshold) this.camera.y -= camMoveSpeed;
+          if (this.mouseScreenY > this.height - edgeThreshold) this.camera.y += camMoveSpeed;
+        }
+
+        // Zoom Interpolation
+        if (Math.abs(this.camera.zoom - this.camera.targetZoom) > 0.005) {
+          this.camera.zoom += (this.camera.targetZoom - this.camera.zoom) * 0.1;
+        }
+
+        this.clampCamera();
+      }
+
+      clampCamera() {
+        const maxCamX = MAP_SIZE - this.width / this.camera.zoom;
+        const maxCamY = MAP_SIZE - this.height / this.camera.zoom;
+        
+        this.camera.x = Math.max(0, Math.min(maxCamX, this.camera.x));
+        this.camera.y = Math.max(0, Math.min(maxCamY, this.camera.y));
+      }
+
+      screenToMap(sx, sy) {
+        return {
+          x: this.camera.x + sx / this.camera.zoom,
+          y: this.camera.y + sy / this.camera.zoom
+        };
+      }
+
+      mapToScreen(mx, my) {
+        return {
+          x: (mx - this.camera.x) * this.camera.zoom,
+          y: (my - this.camera.y) * this.camera.zoom
+        };
+      }
+
+      // =======================================================================
+      // UI SYNC & EVENTS
+      // =======================================================================
+      initEvents() {
+        // Keyboard Listener
+        window.addEventListener('keydown', e => {
+          this.keys[e.code] = true;
+          this.handleHotkeys(e.code);
+        });
+
+        window.addEventListener('keyup', e => {
+          this.keys[e.code] = false;
+        });
+
+        // Window resize
+        window.addEventListener('resize', () => this.resize());
+
+        // Mouse listeners on main canvas
+        this.canvas.addEventListener('mousedown', e => this.onMouseDown(e));
+        window.addEventListener('mousemove', e => this.onMouseMove(e));
+        window.addEventListener('mouseup', e => this.onMouseUp(e));
+
+        // Prevent right click context menu on canvas
+        this.canvas.addEventListener('contextmenu', e => {
+          e.preventDefault();
+          this.onRightClick(e);
+        });
+
+        // Zoom mouse wheel
+        this.canvas.addEventListener('wheel', e => {
+          e.preventDefault();
+          if (e.deltaY < 0) {
+            // Zoom In
+            this.camera.targetZoom = Math.min(1.5, this.camera.targetZoom + 0.1);
+          } else {
+            // Zoom Out
+            this.camera.targetZoom = Math.max(0.6, this.camera.targetZoom - 0.1);
+          }
+        }, { passive: false });
+
+        // Instruction Guide Modals
+        document.getElementById('btn-toggle-instructions').addEventListener('click', () => {
+          document.getElementById('instructions-modal').style.display = 'flex';
+        });
+        document.getElementById('btn-close-instructions').addEventListener('click', () => {
+          document.getElementById('instructions-modal').style.display = 'none';
+        });
+        document.getElementById('btn-start-game').addEventListener('click', () => {
+          document.getElementById('welcome-modal').style.display = 'none';
+          this.start();
+        });
+
+        // Minimap interactions
+        const mmCanvas = document.getElementById('minimap-canvas');
+        const handleMinimapInteraction = (e) => {
+          const rect = mmCanvas.getBoundingClientRect();
+          const mx = (e.clientX - rect.left) / rect.width;
+          const my = (e.clientY - rect.top) / rect.height;
+          
+          // Pan camera center to this percentage position
+          this.camera.x = mx * MAP_SIZE - this.width / (2 * this.camera.zoom);
+          this.camera.y = my * MAP_SIZE - this.height / (2 * this.camera.zoom);
+          this.clampCamera();
+        };
+
+        mmCanvas.addEventListener('mousedown', (e) => {
+          this.mmDragging = true;
+          handleMinimapInteraction(e);
+        });
+
+        window.addEventListener('mousemove', (e) => {
+          if (this.mmDragging) handleMinimapInteraction(e);
+        });
+
+        window.addEventListener('mouseup', () => {
+          this.mmDragging = false;
+        });
+      }
+
+      onMouseDown(e) {
+        if (e.button === 0) { // Left click
+          if (this.activePlacingBuilding) {
+            this.placeBuildingAtMouse();
+            return;
+          }
+
+          // Begin selection box
+          this.dragSelectStart = { x: e.clientX, y: e.clientY };
+          this.isDragging = false;
+        }
+      }
+
+      onMouseMove(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        this.mouseScreenX = e.clientX - rect.left;
+        this.mouseScreenY = e.clientY - rect.top;
+
+        // Map coordinates
+        const mPos = this.screenToMap(this.mouseScreenX, this.mouseScreenY);
+        this.mouseMapX = mPos.x;
+        this.mouseMapY = mPos.y;
+
+        // If dragging left click
+        if (this.dragSelectStart) {
+          const dist = Math.hypot(e.clientX - this.dragSelectStart.x, e.clientY - this.dragSelectStart.y);
+          if (dist > 8) {
+            this.isDragging = true;
+            
+            // Draw visual selection box
+            const box = document.getElementById('selection-box');
+            box.style.display = 'block';
+            
+            const x1 = Math.min(this.dragSelectStart.x, e.clientX);
+            const y1 = Math.min(this.dragSelectStart.y, e.clientY);
+            const w = Math.abs(this.dragSelectStart.x - e.clientX);
+            const h = Math.abs(this.dragSelectStart.y - e.clientY);
+            
+            box.style.left = `${x1}px`;
+            box.style.top = `${y1}px`;
+            box.style.width = `${w}px`;
+            box.style.height = `${h}px`;
+          }
+        }
+      }
+
+      onMouseUp(e) {
+        if (e.button === 0) { // Left click release
+          if (this.dragSelectStart) {
+            const box = document.getElementById('selection-box');
+            box.style.display = 'none';
+
+            if (this.isDragging) {
+              // Select all player units inside box area
+              const x1 = Math.min(this.dragSelectStart.x, e.clientX);
+              const y1 = Math.min(this.dragSelectStart.y, e.clientY);
+              const x2 = Math.max(this.dragSelectStart.x, e.clientX);
+              const y2 = Math.max(this.dragSelectStart.y, e.clientY);
+
+              // Convert coordinates to map system
+              const mapTopLeft = this.screenToMap(x1, y1);
+              const mapBottomRight = this.screenToMap(x2, y2);
+
+              this.selectEntitiesInBox(mapTopLeft, mapBottomRight);
+            } else {
+              // Perform single entity selection
+              this.selectSingleEntityAt(this.mouseMapX, this.mouseMapY);
+            }
+
+            this.dragSelectStart = null;
+            this.isDragging = false;
+          }
+        }
+      }
+
+      onRightClick(e) {
+        if (this.activePlacingBuilding) {
+          // Cancel placement mode
+          this.activePlacingBuilding = null;
+          document.getElementById('placement-banner').style.display = 'none';
+          this.showToast('Structure placement canceled.', 'warn');
+          return;
+        }
+
+        if (this.selectedEntities.length === 0) return;
+
+        // Perform target scanning at clicked coordinate
+        const tx = this.mouseMapX;
+        const ty = this.mouseMapY;
+
+        // Check if right-clicked on an enemy unit/building
+        let targetEnemy = null;
+        [...this.units, ...this.buildings].forEach(ent => {
+          if (ent.team !== TEAM_PLAYER && ent.team !== TEAM_NEUTRAL && ent.hp > 0) {
+            if (Math.hypot(ent.x - tx, ent.y - ty) < ent.radius + 15) {
+              targetEnemy = ent;
+            }
+          }
+        });
+
+        // Check if clicked on a resource node
+        let targetResource = null;
+        this.resources.forEach(res => {
+          if (Math.hypot(res.x - tx, res.y - ty) < res.radius + 15) {
+            targetResource = res;
+          }
+        });
+
+        // Loop commands to selected group
+        // If we have multiple units, we offsets their individual destination targets to form a flock/line
+        const groupCount = this.selectedEntities.filter(e => e.type === ENTITY_UNIT).length;
+        let unitIndex = 0;
+
+        this.selectedEntities.forEach(ent => {
+          if (ent.type !== ENTITY_UNIT) return;
+
+          // Drone Actions
+          if (ent.unitType === 'drone') {
+            if (targetResource) {
+              // Gather
+              this.orderDroneToGather(ent, targetResource, false);
+              this.createClickIndicator(targetResource.x, targetResource.y, '#00f0ff');
+            } else if (targetEnemy) {
+              // Drones can attack to defend, though low dmg
+              ent.combatTarget = { id: targetEnemy.id, type: targetEnemy.type };
+              ent.state = 'combat';
+              this.createClickIndicator(targetEnemy.x, targetEnemy.y, '#ff3344');
+            } else {
+              // Regular move, break gather cycle
+              ent.gatherTarget = null;
+              ent.state = 'moving';
+              
+              // Spread destination markers out
+              const angle = (unitIndex / groupCount) * Math.PI * 2;
+              const spreadRadius = groupCount > 1 ? Math.sqrt(groupCount) * 15 : 0;
+              const ox = tx + Math.cos(angle) * spreadRadius;
+              const oy = ty + Math.sin(angle) * spreadRadius;
+
+              const path = this.findPath(ent.x, ent.y, ox, oy);
+              this.followPath(ent, path);
+              
+              this.createClickIndicator(ox, oy, '#00ff66');
+              unitIndex++;
+            }
+          }
+          // Combat Unit Actions
+          else {
+            if (targetEnemy) {
+              ent.combatTarget = { id: targetEnemy.id, type: targetEnemy.type };
+              ent.state = 'combat';
+              this.createClickIndicator(targetEnemy.x, targetEnemy.y, '#ff3344');
+            } else {
+              // General move, reset combat
+              ent.combatTarget = null;
+              ent.state = 'moving';
+              
+              const angle = (unitIndex / groupCount) * Math.PI * 2;
+              const spreadRadius = groupCount > 1 ? Math.sqrt(groupCount) * 18 : 0;
+              const ox = tx + Math.cos(angle) * spreadRadius;
+              const oy = ty + Math.sin(angle) * spreadRadius;
+
+              const path = this.findPath(ent.x, ent.y, ox, oy);
+              this.followPath(ent, path);
+
+              this.createClickIndicator(ox, oy, '#00ff66');
+              unitIndex++;
+            }
+          }
+        });
+      }
+
+      handleHotkeys(code) {
+        if (!this.gameActive) return;
+
+        // Command keys
+        if (code === 'KeyS') {
+          // Stop command
+          this.selectedEntities.forEach(ent => {
+            if (ent.type === ENTITY_UNIT) {
+              ent.targetX = null;
+              ent.targetY = null;
+              ent.vx = 0;
+              ent.vy = 0;
+              ent.path = [];
+              ent.state = 'idle';
+              ent.combatTarget = null;
+            }
+          });
+          this.showToast('Command: Stop Issued', 'info');
+        }
+
+        if (code === 'KeyH') {
+          // Hold position
+          this.selectedEntities.forEach(ent => {
+            if (ent.type === ENTITY_UNIT) {
+              ent.targetX = null;
+              ent.targetY = null;
+              ent.vx = 0;
+              ent.vy = 0;
+              ent.path = [];
+              ent.state = 'idle';
+              ent.combatTarget = null;
+            }
+          });
+          this.showToast('Command: Hold Position', 'info');
+        }
+
+        if (code === 'KeyA') {
+          // Attack Move orders
+          this.selectedEntities.forEach(ent => {
+            if (ent.type === ENTITY_UNIT && ent.unitType !== 'drone') {
+              ent.state = 'attackMove';
+            }
+          });
+          this.showToast('Command: Attack-Move Active', 'info');
+        }
+
+        // Action panel hotkeys (1-9 map)
+        if (code === 'Digit1') this.triggerActionIndex(0);
+        if (code === 'Digit2') this.triggerActionIndex(1);
+        if (code === 'Digit3') this.triggerActionIndex(2);
+        if (code === 'Digit4') this.triggerActionIndex(3);
+      }
+
+      triggerActionIndex(idx) {
+        const btns = document.querySelectorAll('.action-btn');
+        if (btns[idx] && !btns[idx].disabled) {
+          btns[idx].click();
+        }
+      }
+
+      // =======================================================================
+      // SELECTION CONTROLLER
+      // =======================================================================
+      selectEntitiesInBox(topLeft, bottomRight) {
+        // Clear old selections
+        this.selectedEntities.forEach(e => e.isSelected = false);
+        this.selectedEntities = [];
+
+        // Check all player units inside coordinates
+        this.units.forEach(u => {
+          if (u.team === TEAM_PLAYER && u.hp > 0) {
+            if (u.x >= topLeft.x && u.x <= bottomRight.x &&
+                u.y >= topLeft.y && u.y <= bottomRight.y) {
+              u.isSelected = true;
+              this.selectedEntities.push(u);
+            }
+          }
+        });
+
+        // If no units were found, we don't change selection or fallback to building check?
+        // We only want to select buildings if we click specifically or if drag finds nothing
+        this.syncHUDSelection();
+      }
+
+      selectSingleEntityAt(mx, my) {
+        // Clear old
+        this.selectedEntities.forEach(e => e.isSelected = false);
+        this.selectedEntities = [];
+
+        // 1. Try to find a player unit
+        let found = null;
+        this.units.forEach(u => {
+          if (u.hp > 0 && Math.hypot(u.x - mx, u.y - my) < u.radius + 12) {
+            found = u;
+          }
+        });
+
+        // 2. Try to find a player building
+        if (!found) {
+          this.buildings.forEach(b => {
+            if (Math.hypot(b.x - mx, b.y - my) < b.radius + 10) {
+              found = b;
+            }
+          });
+        }
+
+        // 3. Fallback: Hostiles/Resources (just to view stats)
+        if (!found) {
+          this.units.forEach(u => {
+            if (u.team !== TEAM_PLAYER && u.hp > 0 && Math.hypot(u.x - mx, u.y - my) < u.radius + 12) {
+              found = u;
+            }
+          });
+          this.buildings.forEach(b => {
+            if (b.team !== TEAM_PLAYER && Math.hypot(b.x - mx, b.y - my) < b.radius + 15) {
+              found = b;
+            }
+          });
+        }
+
+        if (found) {
+          found.isSelected = true;
+          this.selectedEntities.push(found);
+        }
+
+        this.syncHUDSelection();
+      }
+
+      syncHUDSelection() {
+        const portraitCanvas = document.getElementById('selection-portrait-canvas');
+        const pCtx = portraitCanvas.getContext('2d');
+        const sName = document.getElementById('selected-name');
+        const sCount = document.getElementById('selected-count');
+        const hpBar = document.getElementById('selected-hp-bar');
+        const sHpText = document.getElementById('selected-stat-hp');
+        const sPowerText = document.getElementById('selected-stat-power');
+        const sArmorText = document.getElementById('selected-stat-armor');
+        const sStatusText = document.getElementById('selected-stat-status');
+        const singleStats = document.getElementById('selected-single-stats');
+        const multiGrid = document.getElementById('selection-multi-grid');
+
+        // Draw portrait cleaner helper
+        pCtx.clearRect(0, 0, 120, 150);
+
+        if (this.selectedEntities.length === 0) {
+          sName.innerText = 'Quantum Sensor Offline';
+          sCount.innerText = '';
+          hpBar.style.width = '0%';
+          sHpText.innerText = '0/0';
+          sPowerText.innerText = 'N/A';
+          sArmorText.innerText = 'N/A';
+          sStatusText.innerText = 'Idle';
+          
+          singleStats.style.display = 'grid';
+          multiGrid.style.display = 'none';
+
+          this.renderActionGrid([]);
+          return;
+        }
+
+        if (this.selectedEntities.length === 1) {
+          const ent = this.selectedEntities[0];
+          sName.innerText = ent.name;
+          sCount.innerText = '';
+          
+          singleStats.style.display = 'grid';
+          multiGrid.style.display = 'none';
+
+          // HP update
+          const hpPct = (ent.hp / ent.maxHp) * 100;
+          hpBar.style.width = `${hpPct}%`;
+          hpBar.style.backgroundColor = hpPct > 50 ? 'var(--color-green)' : (hpPct > 20 ? 'var(--color-yellow)' : 'var(--color-red)');
+          hpBar.style.boxShadow = `0 0 8px ${hpBar.style.backgroundColor}`;
+          
+          sHpText.innerText = `${ent.hp}/${ent.maxHp}`;
+          sArmorText.innerText = ent.armor ? `${ent.armor} Heavy Plate` : 'None';
+          
+          if (ent.type === ENTITY_UNIT) {
+            sPowerText.innerText = `Power consumption: 0`;
+            sStatusText.innerText = ent.state.toUpperCase();
+            
+            // Draw simple icon onto Portrait
+            pCtx.fillStyle = ent.team === TEAM_PLAYER ? '#00f0ff' : '#ff3344';
+            pCtx.font = '32px FontAwesome';
+            pCtx.textAlign = 'center';
+            pCtx.textBaseline = 'middle';
+            let iconCode = '\uf2db'; // robot
+            if (ent.unitType === 'raider') iconCode = '\uf5b0';
+            if (ent.unitType === 'goliath') iconCode = '\uf3ed';
+            if (ent.unitType === 'creep') iconCode = '\uf188';
+            pCtx.fillText(iconCode, 60, 75);
+            
+            // Draw visual pulse radar
+            pCtx.strokeStyle = 'rgba(0, 240, 255, 0.15)';
+            pCtx.lineWidth = 2;
+            pCtx.beginPath();
+            pCtx.arc(60, 75, 45, 0, Math.PI * 2);
+            pCtx.stroke();
+
+            // Commands context
+            if (ent.team === TEAM_PLAYER) {
+              this.renderActionGrid(ent);
+            } else {
+              this.renderActionGrid([]);
+            }
+          } 
+          else if (ent.type === ENTITY_BUILDING) {
+            sPowerText.innerText = ent.powerGen > 0 ? `Provides +${ent.powerGen} Power` : `Requires ${ent.powerUse} Power`;
+            sStatusText.innerText = ent.isUnderConstruction ? `CONSTRUCTING (${Math.floor(ent.constructionProgress*100)}%)` : 'OPERATIONAL';
+
+            // Draw building portrait icon
+            pCtx.fillStyle = ent.team === TEAM_PLAYER ? '#00f0ff' : '#ff3344';
+            pCtx.font = '36px FontAwesome';
+            pCtx.textAlign = 'center';
+            pCtx.textBaseline = 'middle';
+            let iconCode = '\uf1ad'; // building
+            if (ent.buildingType === 'nexus') iconCode = '\uf19c';
+            if (ent.buildingType === 'solar') iconCode = '\uf5ba';
+            if (ent.buildingType === 'assembly') iconCode = '\uf275';
+            if (ent.buildingType === 'turret') iconCode = '\uf519';
+            if (ent.buildingType === 'spire') iconCode = '\uf7a4';
+            pCtx.fillText(iconCode, 60, 75);
+
+            if (ent.team === TEAM_PLAYER) {
+              this.renderActionGrid(ent);
+            } else {
+              this.renderActionGrid([]);
+            }
+          }
+        } 
+        else {
+          // Multi selection mode
+          sName.innerText = 'Squad Command Active';
+          sCount.innerText = `[${this.selectedEntities.length} Units selected]`;
+          
+          singleStats.style.display = 'none';
+          multiGrid.style.display = 'grid';
+          multiGrid.innerHTML = '';
+
+          let totalHp = 0;
+          let totalMaxHp = 0;
+
+          this.selectedEntities.forEach(ent => {
+            totalHp += ent.hp;
+            totalMaxHp += ent.maxHp;
+
+            // Generate square icon grid item
+            const item = document.createElement('div');
+            item.className = 'multi-select-icon';
+            
+            let icon = 'fa-robot';
+            if (ent.unitType === 'raider') icon = 'fa-location-crosshairs';
+            if (ent.unitType === 'goliath') icon = 'fa-shield-halved';
+            
+            item.innerHTML = `
+              <i class="fa-solid ${icon}"></i>
+              <div class="hp-mini">
+                <div class="hp-mini-fill" style="width: ${(ent.hp / ent.maxHp) * 100}%"></div>
+              </div>
+            `;
+            
+            item.addEventListener('click', () => {
+              // Filter selection to only this single unit
+              this.selectedEntities.forEach(e => e.isSelected = false);
+              ent.isSelected = true;
+              this.selectedEntities = [ent];
+              this.syncHUDSelection();
+            });
+
+            multiGrid.appendChild(item);
+          });
+
+          const totalHpPct = (totalHp / totalMaxHp) * 100;
+          hpBar.style.width = `${totalHpPct}%`;
+          hpBar.style.backgroundColor = 'var(--color-cyan)';
+          hpBar.style.boxShadow = `0 0 8px var(--color-cyan)`;
+
+          // For multiple selected units, show worker command grid if workers are in selection
+          const hasWorker = this.selectedEntities.some(e => e.unitType === 'drone');
+          if (hasWorker) {
+            // Treat like a worker selected for build capabilities
+            const dummyWorker = this.selectedEntities.find(e => e.unitType === 'drone');
+            this.renderActionGrid(dummyWorker);
+          } else {
+            // General military commands
+            this.renderActionGrid({ unitType: 'military-group' });
+          }
+        }
+      }
+
+      renderActionGrid(entity) {
+        const grid = document.getElementById('action-grid');
+        const qContainer = document.getElementById('queue-container');
+        grid.innerHTML = '';
+        qContainer.style.display = 'none';
+
+        if (!entity) return;
+
+        // DRONE (Worker actions)
+        if (entity.unitType === 'drone') {
+          const builds = [
+            { key: 'nexus', name: 'Nexus HQ', cost: 400, icon: 'fa-city', hotkey: '1' },
+            { key: 'solar', name: 'Solar Grid', cost: 150, icon: 'fa-solar-panel', hotkey: '2' },
+            { key: 'assembly', name: 'Assembly', cost: 200, icon: 'fa-industry', hotkey: '3' },
+            { key: 'turret', name: 'Photon Arc', cost: 175, icon: 'fa-tower-broadcast', hotkey: '4' }
+          ];
+
+          builds.forEach(b => {
+            const btn = document.createElement('button');
+            btn.className = 'action-btn';
+            btn.disabled = this.crystals < b.cost;
+            btn.innerHTML = `
+              <span class="hotkey">${b.hotkey}</span>
+              <i class="fa-solid ${b.icon}"></i>
+              <span>Build ${b.name.substring(0,6)}</span>
+              <span class="cost">${b.cost}C</span>
+            `;
+            
+            btn.addEventListener('click', () => {
+              this.enterPlacementMode(b.key);
+            });
+
+            grid.appendChild(btn);
+          });
+        }
+        
+        // NEXUS (Train workers)
+        else if (entity.buildingType === 'nexus') {
+          // If queue exists, show progress
+          if (entity.queue.length > 0) {
+            qContainer.style.display = 'block';
+            document.getElementById('queue-progress').style.width = `${entity.queueProgress * 100}%`;
+          }
+
+          const btn = document.createElement('button');
+          btn.className = 'action-btn';
+          btn.disabled = this.crystals < 50 || this.units.length >= this.maxPopulation;
+          btn.innerHTML = `
+            <span class="hotkey">1</span>
+            <i class="fa-solid fa-robot"></i>
+            <span>Train Drone</span>
+            <span class="cost">50C</span>
+          `;
+
+          btn.addEventListener('click', () => {
+            this.crystals -= 50;
+            entity.queue.push('drone');
+            this.syncHUDSelection();
+          });
+          grid.appendChild(btn);
+        }
+
+        // ASSEMBLY PLANT (Train Soldiers)
+        else if (entity.buildingType === 'assembly') {
+          if (entity.queue.length > 0) {
+            qContainer.style.display = 'block';
+            document.getElementById('queue-progress').style.width = `${entity.queueProgress * 100}%`;
+          }
+
+          // Train Raider
+          const btnRaider = document.createElement('button');
+          btnRaider.className = 'action-btn';
+          btnRaider.disabled = this.crystals < 100 || this.units.length >= this.maxPopulation;
+          btnRaider.innerHTML = `
+            <span class="hotkey">1</span>
+            <i class="fa-solid fa-location-crosshairs"></i>
+            <span>Raider Mech</span>
+            <span class="cost">100C</span>
+          `;
+          btnRaider.addEventListener('click', () => {
+            this.crystals -= 100;
+            entity.queue.push('raider');
+            this.syncHUDSelection();
+          });
+          grid.appendChild(btnRaider);
+
+          // Train Goliath
+          const btnGoliath = document.createElement('button');
+          btnGoliath.className = 'action-btn';
+          btnGoliath.disabled = this.crystals < 250 || this.units.length >= this.maxPopulation;
+          btnGoliath.innerHTML = `
+            <span class="hotkey">2</span>
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>Goliath Mech</span>
+            <span class="cost">250C</span>
+          `;
+          btnGoliath.addEventListener('click', () => {
+            this.crystals -= 250;
+            entity.queue.push('goliath');
+            this.syncHUDSelection();
+          });
+          grid.appendChild(btnGoliath);
+        }
+
+        // Group actions (Stop, Hold, Attack-move buttons)
+        else if (entity.unitType === 'military-group' || (entity.type === ENTITY_UNIT && entity.unitType !== 'drone')) {
+          const commands = [
+            { key: 'KeyA', name: 'Attack Move', icon: 'fa-crosshairs', hotkey: 'A' },
+            { key: 'KeyS', name: 'Stop', icon: 'fa-hand', hotkey: 'S' },
+            { key: 'KeyH', name: 'Hold Pos', icon: 'fa-anchor', hotkey: 'H' }
+          ];
+
+          commands.forEach(cmd => {
+            const btn = document.createElement('button');
+            btn.className = 'action-btn';
+            btn.innerHTML = `
+              <span class="hotkey">${cmd.hotkey}</span>
+              <i class="fa-solid ${cmd.icon}"></i>
+              <span>${cmd.name}</span>
+            `;
+            btn.addEventListener('click', () => {
+              this.handleHotkeys(cmd.key);
+            });
+            grid.appendChild(btn);
+          });
+        }
+      }
+
+      enterPlacementMode(buildingKey) {
+        const profile = BUILDING_TYPES[buildingKey];
+        if (this.crystals < profile.cost) {
+          this.showToast('Insufficient Crystal resources!', 'warn');
+          return;
+        }
+
+        this.activePlacingBuilding = {
+          key: buildingKey,
+          cost: profile.cost,
+          size: profile.size,
+          radius: profile.radius
+        };
+
+        // Show placement HUD help banner
+        document.getElementById('placement-banner').style.display = 'block';
+      }
+
+      placeBuildingAtMouse() {
+        if (!this.activePlacingBuilding) return;
+
+        const config = this.activePlacingBuilding;
+        const gX = Math.floor(this.mouseMapX / GRID_CELL_SIZE);
+        const gY = Math.floor(this.mouseMapY / GRID_CELL_SIZE);
+        const size = config.size;
+
+        // Check if fits on map boundaries
+        if (gX < 0 || gX + size > GRID_SIZE || gY < 0 || gY + size > GRID_SIZE) {
+          this.showToast('Out of operational sector limits!', 'warn');
+          return;
+        }
+
+        // Check collisions (0 = walkable, >0 is blocked)
+        let collision = false;
+        for (let dy = 0; dy < size; dy++) {
+          for (let dx = 0; dx < size; dx++) {
+            if (this.collisionGrid[gY + dy][gX + dx] > 0) {
+              collision = true;
+            }
+          }
+        }
+
+        // Ensure placement is in fully explored area of the map
+        const fX = Math.floor((gX * GRID_CELL_SIZE) / FOG_CELL_SIZE);
+        const fY = Math.floor((gY * GRID_CELL_SIZE) / FOG_CELL_SIZE);
+        if (this.fogGrid[fY][fX] === 0) {
+          this.showToast('Cannot construct buildings in unexplored fog!', 'warn');
+          return;
+        }
+
+        if (collision) {
+          this.showToast('Construction site blocked by obstacles!', 'warn');
+          return;
+        }
+
+        // Place building
+        this.crystals -= config.cost;
+        
+        const centerWorldX = (gX + size / 2) * GRID_CELL_SIZE;
+        const centerWorldY = (gY + size / 2) * GRID_CELL_SIZE;
+        this.createBuilding(config.key, centerWorldX, centerWorldY, TEAM_PLAYER, false);
+
+        this.showToast(`Constructing ${BUILDING_TYPES[config.key].name}...`, 'info');
+
+        // Reset placement
+        this.activePlacingBuilding = null;
+        document.getElementById('placement-banner').style.display = 'none';
+
+        this.updatePower();
+        this.updateStatsBar();
+        this.syncHUDSelection();
+      }
+
+      updatePower() {
+        // Calculate player power ratings
+        let totalPowerGen = 0;
+        let totalPowerUse = 0;
+
+        this.buildings.forEach(b => {
+          if (b.team === TEAM_PLAYER && !b.isUnderConstruction) {
+            totalPowerGen += b.powerGen;
+            totalPowerUse += b.powerUse;
+          }
+        });
+
+        this.powerMax = totalPowerGen;
+        this.powerUsed = totalPowerUse;
+      }
+
+      updatePopulation() {
+        const playerUnitCount = this.units.filter(u => u.team === TEAM_PLAYER).length;
+        // Limit population cap
+        document.getElementById('val-units').innerText = `${playerUnitCount}/${this.maxPopulation}`;
+      }
+
+      updateStatsBar() {
+        document.getElementById('val-crystals').innerText = this.crystals;
+        document.getElementById('val-power').innerText = `${this.powerUsed}/${this.powerMax}`;
+        
+        // Highlight power yellow if overloading, green if good
+        const pDisplay = document.querySelector('.stat-display.power');
+        if (this.powerUsed > this.powerMax) {
+          pDisplay.style.color = 'var(--color-red)';
+        } else {
+          pDisplay.style.color = 'var(--color-yellow)';
+        }
+
+        document.getElementById('val-objective').innerText = `Explored: ${this.explorationScore}% | Spires: ${this.spiresTotal - this.spiresDestroyed}/4`;
+      }
+
+      updateTimeDisplay() {
+        document.getElementById('mission-timer').innerText = this.formatTime(this.gameTime);
+      }
+
+      formatTime(seconds) {
+        const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const s = (seconds % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+      }
+
+      findClosestBuilding(x, y, buildingKey, team) {
+        let closest = null;
+        let minDist = Infinity;
+        this.buildings.forEach(b => {
+          if (b.buildingType === buildingKey && b.team === team && !b.isUnderConstruction) {
+            const d = Math.hypot(b.x - x, b.y - y);
+            if (d < minDist) {
+              minDist = d;
+              closest = b;
+            }
+          }
+        });
+        return closest;
+      }
+
+      findClosestCrystalNode(x, y) {
+        let closest = null;
+        let minDist = Infinity;
+        this.resources.forEach(res => {
+          const d = Math.hypot(res.x - x, res.y - y);
+          if (d < minDist) {
+            minDist = d;
+            closest = res;
+          }
+        });
+        return closest;
+      }
+
+      // =======================================================================
+      // VISUAL EFFECTS & TOASTS
+      // =======================================================================
+      showToast(text, type = 'info') {
+        const container = document.getElementById('notif-container');
+        const toast = document.createElement('div');
+        toast.className = `notif-toast ${type}`;
+        
+        let icon = '<i class="fa-solid fa-circle-info"></i>';
+        if (type === 'warn') icon = '<i class="fa-solid fa-triangle-exclamation"></i>';
+        if (type === 'success') icon = '<i class="fa-solid fa-circle-check"></i>';
+        
+        toast.innerHTML = `${icon} <span>${text}</span>`;
+        container.appendChild(toast);
+
+        // Slide out after 3.5 seconds
+        setTimeout(() => {
+          toast.style.animation = 'slideOut 0.25s forwards';
+          setTimeout(() => toast.remove(), 250);
+        }, 3500);
+      }
+
+      spawnFloatingText(text, x, y, color) {
+        this.floatingTexts.push({
+          text: text,
+          x: x,
+          y: y,
+          color: color || '#ffffff',
+          life: 60, // frames
+          speed: 0.8
+        });
+      }
+
+      createExplosionParticles(x, y, color, count) {
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const velocity = 1 + Math.random() * 4;
+          this.particles.push({
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * velocity,
+            vy: Math.sin(angle) * velocity,
+            life: 30 + Math.random() * 20,
+            color: color,
+            radius: 1.5 + Math.random() * 3
+          });
+        }
+      }
+
+      createHarvestingEffect(wx, wy, cx, cy) {
+        // Sparks at the node
+        for (let i = 0; i < 4; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const v = 0.5 + Math.random() * 1.5;
+          this.particles.push({
+            x: cx,
+            y: cy,
+            vx: Math.cos(a) * v,
+            vy: Math.sin(a) * v,
+            life: 15 + Math.random() * 10,
+            color: '#00f0ff',
+            radius: 1 + Math.random() * 2
+          });
+        }
+      }
+
+      createClickIndicator(x, y, color) {
+        this.particles.push({
+          x: x,
+          y: y,
+          vx: 0,
+          vy: 0,
+          life: 25,
+          color: color,
+          radius: 8,
+          isRing: true
+        });
+      }
+
+      // =======================================================================
+      // CANVAS RENDERING
+      // =======================================================================
+      render() {
+        const ctx = this.ctx;
+        
+        // Reset screen matrix
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = '#03050a';
+        ctx.fillRect(0, 0, this.width, this.height);
+
+        // Screen Shake
+        if (this.screenShake > 0.1) {
+          const sx = (Math.random() - 0.5) * this.screenShake;
+          const sy = (Math.random() - 0.5) * this.screenShake;
+          ctx.translate(sx, sy);
+          this.screenShake *= 0.85; // dampening
+        }
+
+        // Apply camera zoom & pan matrix translations
+        ctx.translate(0, 0);
+        ctx.scale(this.camera.zoom, this.camera.zoom);
+        ctx.translate(-this.camera.x, -this.camera.y);
+
+        // 1. Draw Grid Terrain
+        this.renderTerrain();
+
+        // 2. Draw Decorative elements (Rocks, ruins)
+        this.renderDecorations();
+
+        // 3. Draw Resource nodes (Aether Crystals)
+        this.renderResources();
+
+        // 4. Draw Buildings (Player and alien)
+        this.renderBuildings();
+
+        // 5. Draw Units
+        this.renderUnits();
+
+        // 6. Draw Projectiles
+        this.renderProjectiles();
+
+        // 7. Draw Visual FX Particles
+        this.renderParticles();
+
+        // 8. Draw Fog of War overlay
+        this.renderFogOfWar();
+
+        // 9. Draw selection boxes / paths / holograms
+        this.renderOverlays();
+
+        // 10. Draw UI overlays directly in game space
+        this.renderWorldUI();
+
+        // Draw Minimap on its canvas
+        this.renderMinimap();
+      }
+
+      renderTerrain() {
+        const ctx = this.ctx;
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.04)';
+        ctx.lineWidth = 1;
+
+        // Render cell lines in viewport only
+        const startX = Math.max(0, Math.floor(this.camera.x / GRID_CELL_SIZE) * GRID_CELL_SIZE);
+        const endX = Math.min(MAP_SIZE, Math.ceil((this.camera.x + this.width / this.camera.zoom) / GRID_CELL_SIZE) * GRID_CELL_SIZE);
+        const startY = Math.max(0, Math.floor(this.camera.y / GRID_CELL_SIZE) * GRID_CELL_SIZE);
+        const endY = Math.min(MAP_SIZE, Math.ceil((this.camera.y + this.height / this.camera.zoom) / GRID_CELL_SIZE) * GRID_CELL_SIZE);
+
+        for (let x = startX; x <= endX; x += GRID_CELL_SIZE) {
+          ctx.beginPath();
+          ctx.moveTo(x, startY);
+          ctx.lineTo(x, endY);
+          ctx.stroke();
+        }
+        for (let y = startY; y <= endY; y += GRID_CELL_SIZE) {
+          ctx.beginPath();
+          ctx.moveTo(startX, y);
+          ctx.lineTo(endX, y);
+          ctx.stroke();
+        }
+
+        // Draw outer map boundaries
+        ctx.strokeStyle = 'rgba(255, 51, 68, 0.4)';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(0, 0, MAP_SIZE, MAP_SIZE);
+      }
+
+      renderDecorations() {
+        const ctx = this.ctx;
+        this.decorations.forEach(dec => {
+          // Check fog visibility before rendering
+          const fx = Math.floor(dec.x / FOG_CELL_SIZE);
+          const fy = Math.floor(dec.y / FOG_CELL_SIZE);
+          if (fx >= 0 && fx < FOG_GRID_SIZE && fy >= 0 && fy < FOG_GRID_SIZE) {
+            if (this.fogGrid[fy][fx] === 0) return; // Hidden fully
+          }
+
+          ctx.fillStyle = dec.style.color;
+          ctx.beginPath();
+          
+          if (dec.style.shape === 'rock') {
+            ctx.arc(dec.x, dec.y, dec.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Rock highlight facet
+            ctx.fillStyle = 'rgba(255,255,255,0.05)';
+            ctx.beginPath();
+            ctx.arc(dec.x - 3, dec.y - 3, dec.radius * 0.7, 0, Math.PI * 2);
+            ctx.fill();
+          } 
+          else if (dec.style.shape === 'rock-group') {
+            ctx.arc(dec.x, dec.y, dec.radius, 0, Math.PI * 2);
+            ctx.arc(dec.x - 10, dec.y + 5, dec.radius * 0.7, 0, Math.PI * 2);
+            ctx.arc(dec.x + 8, dec.y - 8, dec.radius * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+          } 
+          else {
+            // Alien foliage (Spiky plants)
+            ctx.fillStyle = '#0f331f';
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+              const ang = (i / 5) * Math.PI * 2;
+              const ox = dec.x + Math.cos(ang) * dec.radius;
+              const oy = dec.y + Math.sin(ang) * dec.radius;
+              ctx.lineTo(ox, oy);
+            }
+            ctx.closePath();
+            ctx.fill();
+          }
+        });
+      }
+
+      renderResources() {
+        const ctx = this.ctx;
+        this.resources.forEach(res => {
+          const fx = Math.floor(res.x / FOG_CELL_SIZE);
+          const fy = Math.floor(res.y / FOG_CELL_SIZE);
+          if (this.fogGrid[fy][fx] === 0) return;
+
+          // Soft blue glowing circle aura
+          ctx.fillStyle = 'rgba(0, 240, 255, 0.08)';
+          ctx.beginPath();
+          ctx.arc(res.x, res.y, res.radius * 2.2, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Draw crystal spike vectors
+          ctx.fillStyle = '#00f0ff';
+          ctx.strokeStyle = '#0088ff';
+          ctx.lineWidth = 1.5;
+          
+          ctx.beginPath();
+          ctx.moveTo(res.x, res.y - res.radius);
+          ctx.lineTo(res.x + res.radius * 0.8, res.y + res.radius * 0.5);
+          ctx.lineTo(res.x - res.radius * 0.8, res.y + res.radius * 0.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Secondary crystal shard
+          ctx.fillStyle = '#80f3ff';
+          ctx.beginPath();
+          ctx.moveTo(res.x - 8, res.y + 4);
+          ctx.lineTo(res.x - 14, res.y - 8);
+          ctx.lineTo(res.x - 2, res.y - 4);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        });
+      }
+
+      renderBuildings() {
+        const ctx = this.ctx;
+        this.buildings.forEach(b => {
+          const fx = Math.floor(b.x / FOG_CELL_SIZE);
+          const fy = Math.floor(b.y / FOG_CELL_SIZE);
+          if (this.fogGrid[fy][fx] === 0) return; // fully fogged
+          
+          const isPlayer = b.team === TEAM_PLAYER;
+          const mainColor = isPlayer ? '#00f0ff' : '#ff3344';
+          const secondaryColor = isPlayer ? '#0055aa' : '#990000';
+
+          // Visual Construct Overlay (Wireframe hologram if building is under construction)
+          if (b.isUnderConstruction) {
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(b.x - b.radius, b.y - b.radius, b.radius*2, b.radius*2);
+            
+            // Fill construction color bars
+            ctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+            const h = b.radius * 2 * b.constructionProgress;
+            ctx.fillRect(b.x - b.radius, b.y + b.radius - h, b.radius*2, h);
+
+            // Progress Text
+            ctx.fillStyle = '#00f0ff';
+            ctx.font = '10px var(--font-cyber)';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${Math.floor(b.constructionProgress*100)}%`, b.x, b.y);
+            return;
+          }
+
+          // Render operational structures procedural styles
+          ctx.fillStyle = secondaryColor;
+          ctx.strokeStyle = mainColor;
+          ctx.lineWidth = 3;
+
+          if (b.buildingType === 'nexus') {
+            // Hexagonal Command Fortress
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+              const angle = (i / 6) * Math.PI * 2;
+              const px = b.x + Math.cos(angle) * b.radius;
+              const py = b.y + Math.sin(angle) * b.radius;
+              if (i === 0) ctx.moveTo(px, py);
+              else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Inner Core landing glowing pad
+            ctx.fillStyle = '#0e1724';
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.radius * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.fillStyle = 'rgba(0, 240, 255, 0.3)';
+            ctx.fillRect(b.x - 10, b.y - 10, 20, 20);
+          } 
+          else if (b.buildingType === 'solar') {
+            // Grid solar cells
+            ctx.fillRect(b.x - b.radius, b.y - b.radius, b.radius*2, b.radius*2);
+            ctx.strokeRect(b.x - b.radius, b.y - b.radius, b.radius*2, b.radius*2);
+
+            // Solar panels grids
+            ctx.strokeStyle = 'rgba(255, 221, 0, 0.6)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(b.x - b.radius, b.y); ctx.lineTo(b.x + b.radius, b.y);
+            ctx.moveTo(b.x, b.y - b.radius); ctx.lineTo(b.x, b.y + b.radius);
+            ctx.stroke();
+          } 
+          else if (b.buildingType === 'assembly') {
+            // Factory structure shape
+            ctx.beginPath();
+            ctx.moveTo(b.x - b.radius, b.y + b.radius);
+            ctx.lineTo(b.x - b.radius + 15, b.y - b.radius);
+            ctx.lineTo(b.x + b.radius - 15, b.y - b.radius);
+            ctx.lineTo(b.x + b.radius, b.y + b.radius);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Spinning active arm indicator
+            ctx.fillStyle = 'rgba(0,240,255,0.4)';
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, 12, 0, Math.PI * 2);
+            ctx.fill();
+          } 
+          else if (b.buildingType === 'turret') {
+            // Spire tower base
+            ctx.beginPath();
+            ctx.moveTo(b.x - 8, b.y + b.radius);
+            ctx.lineTo(b.x - 4, b.y - b.radius + 8);
+            ctx.lineTo(b.x + 4, b.y - b.radius + 8);
+            ctx.lineTo(b.x + 8, b.y + b.radius);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Floating plasma charge ball
+            ctx.fillStyle = '#00f0ff';
+            ctx.beginPath();
+            ctx.arc(b.x, b.y - b.radius, 7, 0, Math.PI * 2);
+            ctx.fill();
+          } 
+          else if (b.buildingType === 'spire') {
+            // Red organic Spire nest
+            ctx.fillStyle = '#5c1020';
+            ctx.strokeStyle = '#ff3344';
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Veins glowing
+            ctx.fillStyle = '#a81e37';
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.radius * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Core pulsing eye
+            const pulse = 4 + Math.sin(Date.now() * 0.005) * 2;
+            ctx.fillStyle = '#ff3344';
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, pulse, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        });
+      }
+
+      renderUnits() {
+        const ctx = this.ctx;
+        this.units.forEach(unit => {
+          // Fog of war check
+          const fx = Math.floor(unit.x / FOG_CELL_SIZE);
+          const fy = Math.floor(unit.y / FOG_CELL_SIZE);
+          
+          // Enemies outside active vision are fully hidden
+          if (unit.team !== TEAM_PLAYER) {
+            if (fx < 0 || fx >= FOG_GRID_SIZE || fy < 0 || fy >= FOG_GRID_SIZE || this.fogGrid[fy][fx] !== 2) {
+              return;
+            }
+          }
+
+          const isPlayer = unit.team === TEAM_PLAYER;
+          const mainColor = isPlayer ? '#00f0ff' : '#ff3344';
+
+          // Selection Rings below selected units
+          if (unit.isSelected) {
+            ctx.strokeStyle = 'rgba(0, 255, 102, 0.6)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(unit.x, unit.y, unit.radius + 4, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          // Draw Unit Models using facing vectors
+          ctx.save();
+          ctx.translate(unit.x, unit.y);
+          ctx.rotate(unit.angle);
+
+          ctx.fillStyle = isPlayer ? '#112233' : '#330510';
+          ctx.strokeStyle = mainColor;
+          ctx.lineWidth = 2.5;
+
+          if (unit.unitType === 'drone') {
+            // Drone Model: circular chassis + side claws
+            ctx.beginPath();
+            ctx.arc(0, 0, unit.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Robotic arm appendages
+            ctx.strokeStyle = '#00f0ff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(unit.radius - 2, -6);
+            ctx.lineTo(unit.radius + 6, -4);
+            ctx.moveTo(unit.radius - 2, 6);
+            ctx.lineTo(unit.radius + 6, 4);
+            ctx.stroke();
+
+            // If drone has cargo, draw resource crystal segment inside drone
+            if (unit.cargo > 0) {
+              ctx.fillStyle = '#00f0ff';
+              ctx.beginPath();
+              ctx.arc(-2, 0, 4, 0, Math.PI*2);
+              ctx.fill();
+            }
+          } 
+          else if (unit.unitType === 'raider') {
+            // Raider: triangular fast fighter mech
+            ctx.beginPath();
+            ctx.moveTo(-unit.radius * 0.7, -unit.radius * 0.8);
+            ctx.lineTo(unit.radius * 1.2, 0);
+            ctx.lineTo(-unit.radius * 0.7, unit.radius * 0.8);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Laser weapon barrels
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(0, -6, 8, 2);
+            ctx.strokeRect(0, 4, 8, 2);
+          } 
+          else if (unit.unitType === 'goliath') {
+            // Heavy Goliath Mech
+            ctx.fillRect(-unit.radius*0.8, -unit.radius*0.8, unit.radius*1.6, unit.radius*1.6);
+            ctx.strokeRect(-unit.radius*0.8, -unit.radius*0.8, unit.radius*1.6, unit.radius*1.6);
+
+            // Double cannons
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(4, -8); ctx.lineTo(unit.radius + 8, -8);
+            ctx.moveTo(4, 8); ctx.lineTo(unit.radius + 8, 8);
+            ctx.stroke();
+          } 
+          else if (unit.unitType === 'creep') {
+            // Alien Creep: spike bug
+            ctx.fillStyle = '#800c25';
+            ctx.beginPath();
+            ctx.moveTo(-unit.radius, 0);
+            ctx.lineTo(unit.radius, -unit.radius * 0.6);
+            ctx.lineTo(unit.radius, unit.radius * 0.6);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Pincers claws
+            ctx.strokeStyle = '#ff3344';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(unit.radius - 2, 0, 5, -Math.PI/2, Math.PI/2);
+            ctx.stroke();
+          }
+
+          ctx.restore();
+        });
+      }
+
+      renderProjectiles() {
+        const ctx = this.ctx;
+        this.projectiles.forEach(p => {
+          ctx.strokeStyle = p.color;
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+          ctx.stroke();
+        });
+      }
+
+      renderParticles() {
+        const ctx = this.ctx;
+        this.particles.forEach(p => {
+          if (p.isRing) {
+            // Expand ring
+            const pct = 1 - (p.life / 25);
+            ctx.strokeStyle = p.color;
+            ctx.lineWidth = 2 * (1 - pct);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius * pct * 2.5, 0, Math.PI * 2);
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        });
+      }
+
+      renderFogOfWar() {
+        const ctx = this.ctx;
+        
+        // Render fog of war overlay
+        // Black block rectangles or soft blur canvas
+        // Iterate over tiles visible in the viewport
+        const startX = Math.max(0, Math.floor(this.camera.x / FOG_CELL_SIZE));
+        const endX = Math.min(FOG_GRID_SIZE, Math.ceil((this.camera.x + this.width / this.camera.zoom) / FOG_CELL_SIZE));
+        const startY = Math.max(0, Math.floor(this.camera.y / FOG_CELL_SIZE));
+        const endY = Math.min(FOG_GRID_SIZE, Math.ceil((this.camera.y + this.height / this.camera.zoom) / FOG_CELL_SIZE));
+
+        for (let y = startY; y < endY; y++) {
+          for (let x = startX; x < endX; x++) {
+            const val = this.fogGrid[y][x];
+            
+            if (val === 0) {
+              // Unexplored - Solid black
+              ctx.fillStyle = '#05070c';
+              ctx.fillRect(x * FOG_CELL_SIZE, y * FOG_CELL_SIZE, FOG_CELL_SIZE, FOG_CELL_SIZE);
+            } 
+            else if (val === 1) {
+              // Explored but shroud - 75% dark black overlay
+              ctx.fillStyle = 'rgba(5, 7, 12, 0.78)';
+              ctx.fillRect(x * FOG_CELL_SIZE, y * FOG_CELL_SIZE, FOG_CELL_SIZE, FOG_CELL_SIZE);
+            }
+          }
+        }
+      }
+
+      renderOverlays() {
+        const ctx = this.ctx;
+
+        // Build Placement Hologram
+        if (this.activePlacingBuilding) {
+          const config = this.activePlacingBuilding;
+          const size = config.size;
+          const gX = Math.floor(this.mouseMapX / GRID_CELL_SIZE);
+          const gY = Math.floor(this.mouseMapY / GRID_CELL_SIZE);
+          
+          const worldX = gX * GRID_CELL_SIZE;
+          const worldY = gY * GRID_CELL_SIZE;
+
+          // Check if placement is blocked or valid
+          let isValid = true;
+          if (gX < 0 || gX + size > GRID_SIZE || gY < 0 || gY + size > GRID_SIZE) {
+            isValid = false;
+          } else {
+            for (let dy = 0; dy < size; dy++) {
+              for (let dx = 0; dx < size; dx++) {
+                if (this.collisionGrid[gY + dy][gX + dx] > 0) {
+                  isValid = false;
+                }
+              }
+            }
+            // Check fog grid
+            const fX = Math.floor(worldX / FOG_CELL_SIZE);
+            const fY = Math.floor(worldY / FOG_CELL_SIZE);
+            if (this.fogGrid[fY][fX] === 0) {
+              isValid = false;
+            }
+          }
+
+          ctx.fillStyle = isValid ? 'rgba(0, 255, 102, 0.25)' : 'rgba(255, 51, 68, 0.25)';
+          ctx.strokeStyle = isValid ? '#00ff66' : '#ff3344';
+          ctx.lineWidth = 2;
+          ctx.fillRect(worldX, worldY, size * GRID_CELL_SIZE, size * GRID_CELL_SIZE);
+          ctx.strokeRect(worldX, worldY, size * GRID_CELL_SIZE, size * GRID_CELL_SIZE);
+        }
+      }
+
+      renderWorldUI() {
+        const ctx = this.ctx;
+
+        // Health bars above units and structures that are damaged (or selected)
+        const allEntities = [...this.units, ...this.buildings];
+        allEntities.forEach(ent => {
+          // Fog check
+          const fx = Math.floor(ent.x / FOG_CELL_SIZE);
+          const fy = Math.floor(ent.y / FOG_CELL_SIZE);
+          if (this.fogGrid[fy][fx] !== 2) return; // Only show HP for visible entities
+
+          const showBar = ent.isSelected || (ent.hp < ent.maxHp);
+          
+          if (showBar && ent.hp > 0) {
+            const barW = ent.radius * 1.5;
+            const barH = 4;
+            const bx = ent.x - barW / 2;
+            const by = ent.y - ent.radius - 12;
+
+            // Background
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(bx, by, barW, barH);
+
+            // Fill
+            const pct = ent.hp / ent.maxHp;
+            ctx.fillStyle = ent.team === TEAM_PLAYER ? '#00ff66' : '#ff3344';
+            ctx.fillRect(bx, by, barW * pct, barH);
+            
+            // Border
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(bx, by, barW, barH);
+          }
+        });
+
+        // Floating texts
+        this.floatingTexts.forEach(ft => {
+          ctx.fillStyle = ft.color;
+          ctx.font = 'bold 12px var(--font-mono)';
+          ctx.textAlign = 'center';
+          ctx.fillText(ft.text, ft.x, ft.y);
+        });
+      }
+
+      renderMinimap() {
+        const canvas = document.getElementById('minimap-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const w = canvas.width = canvas.offsetWidth;
+        const h = canvas.height = canvas.offsetHeight;
+
+        ctx.fillStyle = '#020508';
+        ctx.fillRect(0, 0, w, h);
+
+        const ratio = w / MAP_SIZE;
+
+        // 1. Draw Explored/Fog grid representation on minimap
+        // We do a simplified fast rendering
+        const mmGridW = 50;
+        const mmCellW = w / mmGridW;
+        for (let y = 0; y < mmGridW; y++) {
+          for (let x = 0; x < mmGridW; x++) {
+            const fogX = Math.floor(x * (FOG_GRID_SIZE / mmGridW));
+            const fogY = Math.floor(y * (FOG_GRID_SIZE / mmGridW));
+            const fogVal = this.fogGrid[fogY][fogX];
+
+            if (fogVal === 0) {
+              ctx.fillStyle = '#000000';
+              ctx.fillRect(x * mmCellW, y * mmCellW, mmCellW, mmCellW);
+            } else if (fogVal === 1) {
+              ctx.fillStyle = 'rgba(5, 10, 20, 0.7)';
+              ctx.fillRect(x * mmCellW, y * mmCellW, mmCellW, mmCellW);
+            }
+          }
+        }
+
+        // 2. Draw static decorations (obstacles)
+        ctx.fillStyle = '#1b222b';
+        this.decorations.forEach(dec => {
+          const fx = Math.floor(dec.x / FOG_CELL_SIZE);
+          const fy = Math.floor(dec.y / FOG_CELL_SIZE);
+          if (this.fogGrid[fy][fx] > 0) {
+            ctx.fillRect(dec.x * ratio, dec.y * ratio, 2, 2);
+          }
+        });
+
+        // 3. Draw Resource deposits
+        ctx.fillStyle = '#00ffff';
+        this.resources.forEach(res => {
+          const fx = Math.floor(res.x / FOG_CELL_SIZE);
+          const fy = Math.floor(res.y / FOG_CELL_SIZE);
+          if (this.fogGrid[fy][fx] > 0) {
+            ctx.fillRect(res.x * ratio - 1, res.y * ratio - 1, 3, 3);
+          }
+        });
+
+        // 4. Draw Buildings
+        this.buildings.forEach(b => {
+          const fx = Math.floor(b.x / FOG_CELL_SIZE);
+          const fy = Math.floor(b.y / FOG_CELL_SIZE);
+          if (this.fogGrid[fy][fx] > 0) {
+            ctx.fillStyle = b.team === TEAM_PLAYER ? '#00f0ff' : '#ff3344';
+            const sz = b.buildingType === 'nexus' || b.buildingType === 'spire' ? 6 : 4;
+            ctx.fillRect(b.x * ratio - sz / 2, b.y * ratio - sz / 2, sz, sz);
+          }
+        });
+
+        // 5. Draw Units
+        this.units.forEach(u => {
+          const fx = Math.floor(u.x / FOG_CELL_SIZE);
+          const fy = Math.floor(u.y / FOG_CELL_SIZE);
+          // Enemies only visible if fully revealed
+          if (u.team === TEAM_PLAYER || this.fogGrid[fy][fx] === 2) {
+            ctx.fillStyle = u.team === TEAM_PLAYER ? '#00ff66' : '#ff3344';
+            ctx.fillRect(u.x * ratio - 1, u.y * ratio - 1, 2, 2);
+          }
+        });
+
+        // 6. Draw camera viewport rectangle box
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.7)';
+        ctx.lineWidth = 1.2;
+        const camW = (this.width / this.camera.zoom) * ratio;
+        const camH = (this.height / this.camera.zoom) * ratio;
+        ctx.strokeRect(this.camera.x * ratio, this.camera.y * ratio, camW, camH);
+      }
+    }
+
+    // Initialize Game Engine on Window Load
+    window.addEventListener('load', () => {
+      // Welcome Modal will start the mission
+    });
+
+    // Instantiate engine globally
+    const game = new GameEngine();
+  </script>
+</body>
+</html>

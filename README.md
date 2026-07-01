@@ -28,8 +28,12 @@ The prompt lives in [`benchmarks/PROMPT.md`](benchmarks/PROMPT.md).
 
 | Model | Game | Notes | File |
 |-------|------|-------|------|
-| Claude Fable 5 | **IRONHOLD** | English · retro CRT / pixel look | [`benchmarks/fable.html`](benchmarks/fable.html) |
 | Claude Opus 4.8 | **Regno di Eldoria** | Italian · polished fantasy UI | [`benchmarks/opus48.html`](benchmarks/opus48.html) |
+| Claude Sonnet 5 | **Realm Commander** | English · medieval fantasy, gold & wood | [`benchmarks/sonnet5.html`](benchmarks/sonnet5.html) |
+| Claude Fable 5 | **IRONHOLD** | English · retro CRT / pixel look | [`benchmarks/fable.html`](benchmarks/fable.html) |
+| Gemini 3.1 Pro | **HTML5 RTS Game** | English · compact medieval build | [`benchmarks/gemini31pro.html`](benchmarks/gemini31pro.html) |
+| Gemini 3.5 Flash | **Aether Horizon** | English · sci-fi, most feature-rich | [`benchmarks/gemini35flash.html`](benchmarks/gemini35flash.html) |
+| GPT-5.5 | **Outpost RTS** | English · sci-fi outpost, ore & crystal | [`benchmarks/gpt55.html`](benchmarks/gpt55.html) |
 
 Each game runs entirely in the browser — just open the file (or play via the
 link above). Typical controls: drag to box-select, right-click to move, `WASD`
