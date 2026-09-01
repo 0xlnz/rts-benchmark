@@ -28,6 +28,7 @@ The prompt lives in [`benchmarks/PROMPT.md`](benchmarks/PROMPT.md).
 
 | Model | Game | Notes | File |
 |-------|------|-------|------|
+| Claude Fable 5.1 | **Realm Command** | English · medieval fantasy, seeded maps, explore-to-win | [`benchmarks/fable51.html`](benchmarks/fable51.html) |
 | Claude Opus 5 | **Aetherfall** | English · medieval fantasy, gold/wood/ore | [`benchmarks/opus5.html`](benchmarks/opus5.html) |
 | Claude Opus 4.8 | **Regno di Eldoria** | Italian · polished fantasy UI | [`benchmarks/opus48.html`](benchmarks/opus48.html) |
 | Claude Sonnet 5 | **Realm Commander** | English · medieval fantasy, gold & wood | [`benchmarks/sonnet5.html`](benchmarks/sonnet5.html) |
